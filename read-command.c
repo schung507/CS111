@@ -20,11 +20,11 @@
 #include "alloc.h"
 #include "parser.h"
 #include <error.h>
-
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include<string.h>
+#include <string.h>
 
 
 /* FIXME: You may need to add #include directives, macro definitions,
@@ -68,7 +68,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
   int num_tokens = 0;
   int num_chars = 0;
   char c;
-  
+  bool treat_as_word = false;
   //LEXER PART 1: GET ALL ZEE BYTES!
   while( (c=get_next_byte(get_next_byte_argument))!= EOF){
     
@@ -95,8 +95,34 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
 	}
 	
       }
+
       token.size= num_chars;
       token.value[num_chars]=0;
+      if(treat_as_word== false){
+	if(strcmp(token.value, "done")== 0)
+	  token.token_type = DONE;
+	else if(strcmp(token.value, "if")== 0)
+	  token.token_type = IF;
+	else if(strcmp(token.value, "then")== 0)
+	  token.token_type = THEN;
+	else if(strcmp(token.value, "else")== 0)
+	  token.token_type = ELSE;
+	else if(strcmp(token.value, "fi")== 0)
+	  token.token_type = FI;
+	else if(strcmp(token.value, "while")== 0)
+	  token.token_type = WHILE;
+	else if(strcmp(token.value, "do")== 0)
+	  token.token_type = DO;
+	else if(strcmp(token.value, "until")== 0)
+	  token.token_type = UNTIL;
+	else{
+	  token.token_type = IDENTIFIER;
+	  treat_as_word = true;
+	}
+      }
+      else 
+	token.token_type = IDENTIFIER;
+
       (*tokens_list)[num_tokens]= token;
       num_tokens++;
       num_chars=0;
@@ -105,9 +131,26 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
 
     //special characters
     if ( is_special_char(c)){
+      treat_as_word = false;
       token.value[num_chars]= c;
       token.value[num_chars+1]=0;
       token.size= num_chars+1;
+      
+      //assigning types
+      if(strcmp(token.value, ";")== 0)
+	token.token_type = SEMICOLON;
+      else if(strcmp(token.value, "|")== 0)
+	token.token_type = PIPE;
+      else if(strcmp(token.value, "<")== 0)
+	token.token_type = LESSTHAN;
+      else if(strcmp(token.value, ">")== 0)
+	token.token_type = GREATERTHAN;
+      else if(strcmp(token.value, "(")== 0)
+	token.token_type = LPAREN;
+      else if(strcmp(token.value, ")")== 0)
+	token.token_type = RPAREN;
+
+
       (*tokens_list)[num_tokens]= token;
       num_tokens++;
     }
@@ -120,6 +163,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
 	  ;
 	if( c == EOF)
 	  break;
+	treat_as_word = false;
 	token.value[num_chars]=c;
 	token.value[num_chars+1]=0;
 	token.size= num_chars+1;
@@ -158,9 +202,12 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
     
     //keep whitespace and newlines and tabs
     else if(c == '\n'|| c == ' ' || c == '\t'){
+      if( c == '\n')
+	treat_as_word = false;
       token.value[num_chars] = c;
       token.value[num_chars+1] = 0;
       token.size= num_chars+1;
+      token.token_type = NEWLINE;
       (*tokens_list)[num_tokens] = token;
       num_tokens++;
 	//continue;
@@ -177,7 +224,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
       break;
     else{
       //printf("%c\n", c);
-      error (1, 0, "wrong syntax");
+      error (1, 0, "Invalid character");
       break;
     }
   }
@@ -223,7 +270,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
       }*/
 
   //LEXER PART 3: GIVE ZEE TOKEN TYPE 
-  for(i = 0; i < num_tokens; i++){
+  /* for(i = 0; i < num_tokens; i++){
     if(strcmp((*tokens_list)[i].value, ";")== 0)
       (*tokens_list)[i].token_type = SEMICOLON;
     else if(strcmp((*tokens_list)[i].value, "|")== 0)
@@ -254,7 +301,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
       (*tokens_list)[i].token_type = UNTIL;
     else 
       (*tokens_list)[i].token_type = IDENTIFIER;
-  }
+      }*/
 
   //LEXER PART 3.5: Newline BUSINESSS  
   int depth = 0;
@@ -263,7 +310,7 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
       depth++;
     if( (*tokens_list)[i].token_type == FI ||  (*tokens_list)[i].token_type == DONE || (*tokens_list)[i].token_type == RPAREN)
       depth--;
-    if(i >0 && (*tokens_list)[i].value[0]== '\n' && is_special_token((*tokens_list)[i-1])==0 && (*tokens_list)[i-1].value[0]!= '\n' && depth > 0){
+    if(i >0 && (*tokens_list)[i].value[0]== '\n' && !is_special_token((*tokens_list)[i-1]) && (*tokens_list)[i-1].value[0]!= '\n' && depth > 0){
       (*tokens_list)[i].value[0] = ';';
       (*tokens_list)[i].token_type = SEMICOLON;
       (*tokens_list)[i].size =1;
@@ -319,12 +366,12 @@ int lexer_function(int (*get_next_byte) (void *),void *get_next_byte_argument,\
   *tokens_list = new_tokens_list;
 
   // printf("size of array: %d", num_tokens);
-  /* for(i = 0; i < new_num_tokens; i++){
+  /*for(i = 0; i < new_num_tokens; i++){
     // if ( strcmp((*tokens_list)[i].value, "\n") != 0)
       printf ("%s ", (*tokens_list)[i].value);
       //else
       //printf("\nNEWLINE\n");
-  }*/
+      }*/
   // printf("size is %d\n", new_num_tokens);
   return new_num_tokens;
 
