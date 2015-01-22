@@ -43,6 +43,7 @@ enum token_types {
   IDENTIFIER,
   LESSTHAN,
   GREATERTHAN,
+  NEWLINE,
 };
 
 // Data associated with a command.
