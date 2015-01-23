@@ -177,15 +177,17 @@ void execute_simple(command_t c, int in, int out) {
     waitpid(p, &status, 0);
   }
 
-  if (WIFEXITED(&status))
-    c->status = WEXITSTATUS(&status);
-  else
-    c->status = status;
+  if (WIFEXITED(status))
+    c->status = WEXITSTATUS(status);
+  else if (WIFSTOPPED(status))
+    c->status = WSTOPSIG(status);
+  else if (WIFSIGNALED(status))
+    c->status = WTERMSIG(status);
 }
 
 void execute_subshell(command_t c, int in, int out) {
   
-  /*  int status;
+  int status;
 
   pid_t p = fork();
   if (p < 0) 
@@ -197,8 +199,13 @@ void execute_subshell(command_t c, int in, int out) {
   else {
     waitpid(p, &status, 0);
   }
-  */
-    
+
+  if (WIFEXITED(status))
+    c->status = WEXITSTATUS(status);
+  else if (WIFSTOPPED(status))
+    c->status = WSTOPSIG(status);
+  else if (WIFSIGNALED(status))
+    c->status = WTERMSIG(status);
 }
 
 void execute_pipe(command_t c, int in, int out){
