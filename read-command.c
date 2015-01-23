@@ -429,7 +429,8 @@ make_command_stream (int (*get_next_byte) (void *),
       }
       
       printf("sending %d tokens\n", i-start);
-      printf("first token is %s\n", tokens_list[start].value);
+      /*printf("first token is %s\n", tokens_list[start].value);
+      printf("last token is %s\n", tokens_list[i-1].value);*/
       tree->command_trees[commandCount] = *parser(tokens_list+start, i-start);  
       start = i+1;
       commandCount++;
@@ -438,8 +439,9 @@ make_command_stream (int (*get_next_byte) (void *),
   
  
   if( strcmp(tokens_list[listSize-1].value, "\n") != 0){  
-    printf("sending %d tokens\n", listSize-start-1);
-    printf("outside: last token is %s\n", tokens_list[listSize-1].value);
+    printf("sending %d tokens\n", listSize-start);
+    /*printf("outside: first token is %s\n", tokens_list[start].value);
+    printf("outside: last token is %s\n", tokens_list[listSize-1].value);*/
     tree->command_trees[commandCount] = *parser(tokens_list+start, listSize-start);
     commandCount++;
     }
