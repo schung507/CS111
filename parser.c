@@ -466,7 +466,9 @@ int sequence_checker(struct token* sequence_token, int size_sequence) {
   if (end_statement == (size - 1))     //there is no sequence                                                           
     return 0;
   if (end_statement == (size - 2) && sequence_token[size - 1].token_type == SEMICOLON)
-    return 0;   //there is no sequence, just semicolon deliminating the end                                                        
+    return 0;   //there is no sequence, just semicolon deliminating the end
+  if (first == LPAREN && end_statement != (size-1))
+    return end_statement;   //returns position of valid sequence
   if (first == IDENTIFIER && end_statement != (size-1))
     return end_statement;
   if (sequence_token[end_statement+1].token_type == SEMICOLON)
