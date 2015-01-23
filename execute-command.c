@@ -21,13 +21,15 @@
 #include <error.h>
 
 /* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
+   static function definitions, etc.  
 
 void r_execute(command_t c, int in, int out);
 void execute_if(command_t c, int in, int out);
-void execute_woru(command_t c, int in, int out);
+void execute_while(command_t c, int in, int out);
+void execute_until (command_t c, int in, int out);
 void execute_sequence(command_t c, int in, int out);
-
+void execute_simple(command_t c, int in, int out);
+*/
 
 int
 prepare_profiling (char const *name)
@@ -51,7 +53,7 @@ execute_command (command_t c, int profiling)
   /* FIXME: Replace this with your implementation, like 'prepare_profiling'.  */
   error (1, 0, "command execution not yet implemented");
 }
-
+/*
 void r_execute(command_t c, int in, int out) {
   enum command_type type = c->type;
   
@@ -80,14 +82,23 @@ void execute_if(command_t c, int in, int out) {
   c->status = c->u.command[0]->status;
 }
 
-void execute_woru(command_t c, int in, int out) {
+void execute_while(command_t c, int in, int out) {
 
-  while (r_execute(c->u.command[0]->status) == 0) {
+  while (r_execute(c->u.command[0]->status) != 0) {
     r_execute(c->u.command[1], in, out);
     c->status = c->u.command[1]->status;
   }
   c->status = c->u.command[0]->status;
 }
+
+void execute_until(command_t c, int in, int out) {
+  
+  while (r_execute(c->u.command[0]->status) == 0) {
+    r_execute(c->u.command[1], in, out);
+    c->status = c->u.command[1]->status;
+  }
+  c->status = c->u.command[0]->status;
+} 
 
 void execute_sequence(command_t c, int in, int out) {
   
@@ -95,3 +106,8 @@ void execute_sequence(command_t c, int in, int out) {
   r_execute(c->u.command[1], in, out);
   c->status = c->u.command[1]->status;
 }
+
+void execute_simple(command_t c, int in, int out) {
+
+}
+*/
