@@ -562,6 +562,7 @@ command_t parser(struct token* token_data, int size_of_token_array) {
     error(1, 0, "Invalid array size");
 
   //Because input does not take in entire size of the array
+  //printf("invalid token is %s\n",token_data[size-1].value);
   if (token_data[size-1].token_type == LESSTHAN ||
       token_data[size-1].token_type == GREATERTHAN)
     error(1, 0, "Invalid redirect at end of statement");
