@@ -343,17 +343,17 @@ int pipe_checker(struct token* pipe_token, int size_pipe) {
             }
         }
       //A SUBSHELL_STATEMENT with pipe
-      if (first == LPAREN)
-	{
-	  if (pipe_token[i].token_type == LPAREN)
-	    nested++;
-	  if (pipe_token[i].token_type == PIPE &&
-	      pipe_token[i-1].token_type == RPAREN &&
-	      nested == 0)
-	    return i;
-	  if (pipe_token[i].token_type == RPAREN)
-	    nested--;
-	}
+      if (first == LPAREN) {
+	if (pipe_token[i].token_type == LPAREN)
+	  nested++;
+	if (pipe_token[i].token_type == PIPE
+	    && pipe_token[i-1].token_type == RPAREN
+	    && nested == 0)
+	  return i;
+	if (pipe_token[i].token_type == RPAREN && nested != 0)
+	  nested--;
+      }
+
       //A SIMPLE_COMMAND with pipe
       if (first == IDENTIFIER)
 	{
@@ -440,7 +440,9 @@ int end_of_statement(struct token* count_token, int size_count) {
     if (first == LPAREN) {
     if (count_token[i].token_type == LPAREN)
       nested++;
-    if (count_token[i].token_type == RPAREN && nested == 0)
+    if (count_token[i].token_type == SEMICOLON
+	&& count_token[i-1].token_type == RPAREN
+	&& nested == 0)
       return i;
     if (count_token[i].token_type == RPAREN && nested != 0)
       nested--;
