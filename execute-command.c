@@ -35,7 +35,7 @@ void execute_while(command_t c, int in, int out);
 void execute_until (command_t c, int in, int out);
 void execute_sequence(command_t c, int in, int out); 
 void execute_simple(command_t c, int in, int out);
-/*void execute_subshell(command_t c, int in, int out);*/
+void execute_subshell(command_t c, int in, int out);
 void execute_pipe(command_t c, int in, int out); 
 
 int
@@ -82,7 +82,7 @@ void r_execute(command_t c, int in, int out) {
     execute_simple(c, in, out);
     break;
   case SUBSHELL_COMMAND:
-    //execute_subshell(c, in, out);
+    execute_subshell(c, in, out);
     break;
   case PIPE_COMMAND:
     execute_pipe(c, in, out);
@@ -163,11 +163,15 @@ void execute_simple(command_t c, int in, int out) {
 
   pid_t p = fork();
   if (p == 0) {   //We are in the child
+    if (in != -1)
+      dup2(STDIN_FILENO, in);
+    if (out != -1)
+      dup2(STDOUT_FILENO, out);
     execvp(c->u.word[0], c->u.word);
-    perror("execvp returned");    //execvp returned, but if successful should destroy itself
+    error(1, 0, "Execvp returned");    //execvp returned, but if successful should destroy itself
   }
   else if (p < 0) {
-    perror("Failed to fork.");
+    error(1, 0, "Failed to fork.");
   }
   else {
     waitpid(p, &status, 0);
@@ -177,6 +181,24 @@ void execute_simple(command_t c, int in, int out) {
     c->status = WEXITSTATUS(&status);
   else
     c->status = status;
+}
+
+void execute_subshell(command_t c, int in, int out) {
+  
+  /*  int status;
+
+  pid_t p = fork();
+  if (p < 0) 
+    error(1, 0, "Failed to fork");
+  else if (p == 0) {
+    r_execute(c->u.command[0], in, out);
+    exit(c->u.command[0]->status);
+  }
+  else {
+    waitpid(p, &status, 0);
+  }
+  */
+    
 }
 
 void execute_pipe(command_t c, int in, int out){
@@ -200,9 +222,11 @@ void execute_pipe(command_t c, int in, int out){
 
      
     default: /* parent*/
-
       close(fd[1]);
       r_execute(c->u.command[1], fd[0], out);
+      printf("BEFORE\n");
+      waitpid(pid2, &status, 0);
+      printf("AFTER");
       exit(command_status(c->u.command[1]));
 
     case -1:
@@ -211,15 +235,17 @@ void execute_pipe(command_t c, int in, int out){
     }
 
   default:/*parent*/
-
+    close(fd[0]);
+    close(fd[1]);
     waitpid( pid1, &status, 0);
-    c->status = command_status(c->u.command[1]);
+    c->status = WEXITSTATUS(&status);
     break;
   case -1:
     perror("Failed fork first time");
     exit(1);
   }
 
-  exit(0);
+  //  exit(0);
   
 }
+
