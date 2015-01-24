@@ -247,9 +247,9 @@ void execute_pipe(command_t c, int in, int out){
     default: /* parent*/
       close(fd[1]);
       r_execute(c->u.command[1], fd[0], out);
-      printf("BEFORE\n");
+      //  printf("BEFORE\n");
       waitpid(pid2, &status, 0);
-      printf("AFTER");
+      // printf("AFTER");
       exit(command_status(c->u.command[1]));
 
     case -1:
@@ -268,7 +268,7 @@ void execute_pipe(command_t c, int in, int out){
     exit(1);
   }
 
-  //  exit(0);
+  exit(0);
   
 }
 
