@@ -85,7 +85,7 @@ command_t if_command_parser(struct token* if_token, int size_if) {
   //Redirection
   if (fi_position <= (size-1))
     input_checker(if_token + fi_position + 1,
-		  size - (fi_position - 1), if_statement);
+		  size - fi_position - 1, if_statement);
 
   if (then_position == 0)  //no 'then' is found
     error(1, 0, "No 'then' to complete 'if'");
@@ -181,7 +181,7 @@ command_t woru_parser(struct token* woru_token, int size_woru)
   if (done_position <= (size-1))
     {
     input_checker(woru_token + done_position + 1, 
-		  size - (done_position - 1), woru);
+		  size - done_position - 1, woru);
     }
 
   if (do_position == 0)
@@ -243,8 +243,8 @@ command_t subshell_parser(struct token* sub_token, int size_sub) {
 
   //Redirection
   if (position_right <= size-1)
-    input_checker(sub_token + 1, 
-		  size - (position_right - 1), subshell);
+    input_checker(sub_token + position_right + 1, 
+		  size - position_right - 1, subshell);
 
   if (position_right == 0)
     error(1, 0, "No ')' to match '('");
@@ -393,7 +393,8 @@ int end_of_statement(struct token* count_token, int size_count) {
   enum token_types first = count_token[0].token_type;
   int size = size_count;
   int nested = 0;
-
+  int left = 1;
+  int right = 0;
 
   int i;
   for (i = 1; i != size; i++) {
@@ -439,13 +440,13 @@ int end_of_statement(struct token* count_token, int size_count) {
     //SUBSHELL
     if (first == LPAREN) {
     if (count_token[i].token_type == LPAREN)
-      nested++;
-    if (count_token[i].token_type == SEMICOLON
-	&& count_token[i-1].token_type == RPAREN
-	&& nested == 0)
+      left++;
+    if (count_token[i].token_type == SEMICOLON 
+	&&count_token[i-1].token_type == RPAREN
+	&& left == right)
       return i;
-    if (count_token[i].token_type == RPAREN && nested != 0)
-      nested--;
+    if (count_token[i].token_type == RPAREN)
+      right++;
     }
 
     //SIMPLE                                         
@@ -488,13 +489,14 @@ void input_checker(struct token* input_token, int size_input, command_t current_
     error(1, 0, "Invalid '<' position");
   if (input_token[size-1].token_type == GREATERTHAN)
   error(1, 0, "Invalid '>' position"); 
-  if (size < 1)
+  /* if (size < 1)
     error(1, 0, "Invalid input at end of statement"); 
-
+  */
   for (k = size - 1; k != -1; k--)
     {  
       if (input_token[k].token_type == GREATERTHAN)
         {
+	  if (k != 0) {
           if (input_token[k-1].token_type == LESSTHAN ||
              input_token[k-1].token_type == GREATERTHAN ||
              input_token[k-1].token_type == LPAREN ||
@@ -502,14 +504,16 @@ void input_checker(struct token* input_token, int size_input, command_t current_
              input_token[k-1].token_type == SEMICOLON ||
              input_token[k-1].token_type == PIPE)
             error(1, 0, "Invalid output for redirection.");
+	  }
 	  output_pos = k;
 	  break;
         }
     }
 
   for (i = size - 1; i != -1; i--) {
-    if (input_token[i].token_type == LESSTHAN)
+    if (input_token[i].token_type == LESSTHAN && i != 0)
       {
+	if (i != 0) {
         if (input_token[i-1].token_type == LESSTHAN ||
             input_token[i-1].token_type == GREATERTHAN ||
             input_token[i-1].token_type == LPAREN ||
@@ -517,6 +521,7 @@ void input_checker(struct token* input_token, int size_input, command_t current_
             input_token[i-1].token_type == SEMICOLON ||
             input_token[i-1].token_type == PIPE)
           error(1, 0, "Invalid redirect");
+	}
 	input_pos = i;
 	break;
       }
