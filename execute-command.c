@@ -198,6 +198,11 @@ void execute_subshell(command_t c, int in, int out) {
   
   int status;
 
+  if (c->input != NULL)
+    in = open(c->input, O_RDONLY|O_CREAT);
+  if (c->output != NULL)
+    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
+
   pid_t p = fork();
   //Error in forking
   if (p < 0) 
