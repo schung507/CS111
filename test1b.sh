@@ -31,7 +31,6 @@ EOF
 
 cat >test.exp <<'EOF'
 HELLO
-
 false
 CHICKEN
 EOF
