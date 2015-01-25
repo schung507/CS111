@@ -6,3 +6,7 @@ Limitations:
 -Our parser can't handle sequence commands sometimes when it contains parantheses
 -Prints out undefined garbage sometimes because it accesses null pointer somewhere
 -in execution, command hangs sometimes when it handles large files
+
+UPDATE
+-all test cases should work
+-if test case does not work, problem should be coming from parser.c
