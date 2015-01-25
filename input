@@ -1,0 +1,5 @@
+(echo hello) | tr a-z A-Z
+
+echo hello 
+
+cat input
