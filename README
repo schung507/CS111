@@ -4,4 +4,5 @@ Partner: Lynn Hao Tran
 
 Limitations:
 -Our parser can't handle sequence commands sometimes when it contains parantheses
--Prints out undefined garbage sometimes because it accesses null pointer somewher
+-Prints out undefined garbage sometimes because it accesses null pointer somewhere
+-in execution, command hangs sometimes when it handles large files

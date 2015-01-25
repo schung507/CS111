@@ -396,14 +396,14 @@ make_command_stream (int (*get_next_byte) (void *),
   
   // printf("\nwent thru lexer\n");
   //print final array
-  printf("There are %d tokens\n", listSize);
+  // printf("There are %d tokens\n", listSize);
   int i;
-  for(i = 0; i < listSize; i++){
+  /* for(i = 0; i < listSize; i++){
     if ( strcmp(tokens_list[i].value, "\n") != 0)
       printf ("%s ", tokens_list[i].value);
     else
       printf("%s", tokens_list[i].value);
-      }
+      }*/
  
   command_stream_t tree = checked_malloc(sizeof(struct command_stream));
 
@@ -428,7 +428,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	//printf("reallocated new stream\n");
       }
       
-      printf("sending %d tokens\n", i-start);
+      //printf("sending %d tokens\n", i-start);
       /*printf("first token is %s\n", tokens_list[start].value);
       printf("last token is %s\n", tokens_list[i-1].value);*/
       tree->command_trees[commandCount] = *parser(tokens_list+start, i-start);  
@@ -439,7 +439,7 @@ make_command_stream (int (*get_next_byte) (void *),
   
  
   if( strcmp(tokens_list[listSize-1].value, "\n") != 0){  
-    printf("sending %d tokens\n", listSize-start);
+    //printf("sending %d tokens\n", listSize-start);
     /*printf("outside: first token is %s\n", tokens_list[start].value);
     printf("outside: last token is %s\n", tokens_list[listSize-1].value);*/
     tree->command_trees[commandCount] = *parser(tokens_list+start, listSize-start);

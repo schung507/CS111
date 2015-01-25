@@ -265,8 +265,6 @@ void execute_pipe(command_t c, int in, int out){
     perror("Failed fork first time");
     exit(1);
   }
-
-  //  exit(0);
   
 }
 
