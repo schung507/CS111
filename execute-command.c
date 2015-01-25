@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 void r_execute(command_t c, int in, int out);
 void execute_if(command_t c, int in, int out);
@@ -63,7 +63,15 @@ trees. The two last arguments will represent the file descriptor
 numbers if any command tree contains pipes/redirections. */ 
 void r_execute(command_t c, int in, int out) {
   enum command_type type = c->type;
-  
+
+  //Check if there are any redirections
+  //Redirections are handed down the tree
+  //Overwritten by redirections farther down the tree
+  if (c->input != NULL)
+    in = open(c->input, O_RDONLY|O_CREAT);
+  if (c->output != NULL)
+    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
+
   switch(type) {
 
   case IF_COMMAND: 
@@ -89,19 +97,18 @@ void r_execute(command_t c, int in, int out) {
     break;
   }
 
+  //Close the files
+  if (c->input != NULL)
+    close(in);
+  if (c->output != NULL)
+    close(out);
+
 }
 
 void execute_if(command_t c, int in, int out) {
 
-  //Check if there are any redirections
-  //Redirections are handed down the tree
-  //Overwritten by redirections farther down the tree
-  if (c->input != NULL)
-    in = open(c->input, O_RDONLY|O_CREAT);
-  if (c->output != NULL)
-    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
-
-  r_execute(c->u.command[0], in, out);
+  r_execute(c->u.command[0], in, out);  
+  c->status = c->u.command[0]->status;
 
   if (c->u.command[0]->status == 0) {
     r_execute(c->u.command[1], in, out);
@@ -111,17 +118,11 @@ void execute_if(command_t c, int in, int out) {
     r_execute(c->u.command[2], in, out);
     c->status = c->u.command[2]->status;
   }
-  c->status = c->u.command[0]->status;
-
+  
 }
 
 
 void execute_while(command_t c, int in, int out) {
-
-  if (c->input != NULL)
-    in = open(c->input, O_RDONLY|O_CREAT);
-  if (c->output != NULL)
-    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
 
   r_execute(c->u.command[0], in, out);
 
@@ -135,11 +136,6 @@ void execute_while(command_t c, int in, int out) {
 
 void execute_until(command_t c, int in, int out) {
   
-  if (c->input != NULL)
-    in = open(c->input, O_RDONLY|O_CREAT);
-  if (c->output != NULL)
-    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
-
   r_execute(c->u.command[0], in, out);
 
   //while the until condition is true (until it is false)
@@ -161,12 +157,16 @@ void execute_sequence(command_t c, int in, int out) {
 
 void execute_simple(command_t c, int in, int out) {
 
-  if (c->input != NULL)
-    in = open(c->input, O_RDONLY|O_CREAT);
-  if (c->output != NULL)
-    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
-
   int status;
+
+  if (strcmp(c->u.word[0], "exec") == 0) {
+    if (in != -1)
+      dup2(in, STDIN_FILENO);
+    if (out != -1)
+      dup2(out, STDOUT_FILENO);
+    execvp(c->u.word[1], c->u.word + 1);
+    error(1, 0, "Bad command"); 
+  }
 
   pid_t p = fork();
   if (p == 0) {   //We are in the child
@@ -174,8 +174,10 @@ void execute_simple(command_t c, int in, int out) {
       dup2(in, STDIN_FILENO);
     if (out != -1)
       dup2(out, STDOUT_FILENO);
+    if (strcmp(c->u.word[0], ":") == 0)
+      exit(0);
     execvp(c->u.word[0], c->u.word);
-    error(1, 0, "Execvp returned");    //execvp returned, but if successful should destroy itself
+    error(1, 0, "Bad command");    //execvp returned, but if successful should destroy itself
   }
   //Error in forking
   else if (p < 0) {
@@ -197,11 +199,6 @@ void execute_simple(command_t c, int in, int out) {
 void execute_subshell(command_t c, int in, int out) {
   
   int status;
-
-  if (c->input != NULL)
-    in = open(c->input, O_RDONLY|O_CREAT);
-  if (c->output != NULL)
-    out = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);
 
   pid_t p = fork();
   //Error in forking
@@ -237,19 +234,20 @@ void execute_pipe(command_t c, int in, int out){
 
     switch (pid2 = fork()) {
 
-    case 0: /* child */
+    case 0: /* grandchild */
      
       close(fd[0]);/*does not need this end of the pipe */
       r_execute(c->u.command[0], in, fd[1]);
       exit(command_status(c->u.command[0]));
 
      
-    default: /* parent*/
+    default: /*child*/
       close(fd[1]);
       r_execute(c->u.command[1], fd[0], out);
-      printf("BEFORE\n");
+      /*printf("BEFORE\n");*/
+      close(fd[0]);
       waitpid(pid2, &status, 0);
-      printf("AFTER");
+      /*printf("AFTER");*/
       exit(command_status(c->u.command[1]));
 
     case -1:
@@ -261,7 +259,7 @@ void execute_pipe(command_t c, int in, int out){
     close(fd[0]);
     close(fd[1]);
     waitpid( pid1, &status, 0);
-    c->status = WEXITSTATUS(&status);
+    c->status = WEXITSTATUS(status);
     break;
   case -1:
     perror("Failed fork first time");

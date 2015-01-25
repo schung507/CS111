@@ -5,6 +5,8 @@
 #include "alloc.h"
 #include "parser.h"
 
+//#define VLAD_DEBUG
+
 //Implementations
 command_t simple_command_parser(struct token* simple_token, int size_simple) {
   int size = size_simple;
@@ -294,6 +296,8 @@ int pipe_checker(struct token* pipe_token, int size_pipe) {
   enum token_types first = pipe_token[0].token_type;
   int size = size_pipe;
   int nested = 0;
+  int left = 1;
+  int right = 0;
 
   int i;
   for (i = 1; i != size; i++)
@@ -343,16 +347,16 @@ int pipe_checker(struct token* pipe_token, int size_pipe) {
             }
         }
       //A SUBSHELL_STATEMENT with pipe
-      if (first == LPAREN) {
-	if (pipe_token[i].token_type == LPAREN)
-	  nested++;
-	if (pipe_token[i].token_type == PIPE
-	    && pipe_token[i-1].token_type == RPAREN
-	    && nested == 0)
-	  return i;
-	if (pipe_token[i].token_type == RPAREN && nested != 0)
-	  nested--;
-      }
+    if (first == LPAREN) {
+      if (pipe_token[i].token_type == LPAREN)
+	left++;
+      if (pipe_token[i].token_type == PIPE 
+	  && pipe_token[i-1].token_type == RPAREN
+	  && left == right)
+	return i;
+      if (pipe_token[i].token_type == RPAREN)
+	right++;
+    }
 
       //A SIMPLE_COMMAND with pipe
       if (first == IDENTIFIER)
@@ -452,8 +456,18 @@ int end_of_statement(struct token* count_token, int size_count) {
     //SIMPLE                                         
     if (first == IDENTIFIER)
       { 
-	if (count_token[i].token_type == SEMICOLON)
+	if (count_token[i].token_type == IF || count_token[i].token_type == WHILE ||
+	    count_token[i].token_type == UNTIL || count_token[i].token_type == LPAREN) {
+	  if (count_token[i-1].token_type != IDENTIFIER)
+	    nested++;
+	}	
+	if (count_token[i].token_type == SEMICOLON && nested == 0)
           return i;
+	if (count_token[i].token_type == FI || count_token[i].token_type == DONE ||
+	    count_token[i].token_type == RPAREN) {
+	  if (count_token[i-1].token_type != IDENTIFIER  && nested != 0)
+	    nested--;
+	}
       }
     
   }
@@ -565,6 +579,16 @@ command_t parser(struct token* token_data, int size_of_token_array) {
   int size = size_of_token_array;
   if (size == 0)
     error(1, 0, "Invalid array size");
+
+#ifdef VLAD_DEBUG
+  int i = 0;
+  for (; i < size_of_token_array; i++)
+  {
+    printf ("%s ", token_data[i].value);
+  }
+  printf("\n");
+#endif
+
 
   //Because input does not take in entire size of the array
   //printf("invalid token is %s\n",token_data[size-1].value);
