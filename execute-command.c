@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 int profile_descriptor;
 
@@ -37,6 +38,7 @@ struct profiling_time {
   struct timeval system_time;
 };
 
+void write_log(struct profiling_time profile_times, int profile_descriptor);
 void r_execute(command_t c, int in, int out);
 void execute_if(command_t c, int in, int out);
 void execute_while(command_t c, int in, int out);
@@ -61,6 +63,7 @@ command_status (command_t c)
 void
 execute_command (command_t c, int profiling)
 {
+  profile_descriptor = profiling;
   struct profiling_time profile_times;
   clock_getres(CLOCK_REALTIME, &profile_times.absolute_time);
   clock_getres(CLOCK_MONOTONIC, &profile_times.real_time_start);
@@ -70,6 +73,21 @@ execute_command (command_t c, int profiling)
   clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
 }
 
+void write_log(struct profiling_time profile_times, int profile_descriptor){
+ 
+  char time_string[100];
+  //casting? 
+  /*profile_times.absolute_times.tv_nsec =(double)profile_times.absolute_times.tv_nsec;
+profile_times.real_time_start.tv_nsec =(double)profile_times.real_time_start.tv_nsec;
+profile_times.real_time_end.tv_nsec =(double)profile_times.real_time_end.tv_nsec;
+profile_times.real_user_time.tv_usec =(double)profile_times.real_user_time.tv_nsec;
+profile_times.system_time.tv_usec =(double)profile_times.system_time.tv_nsec; 
+  */
+
+  write(profile_descriptor, time_string, strlen(time_string));
+
+
+}
 /*Will be recursively called in order to execute down the command
 trees. The two last arguments will represent the file descriptor 
 numbers if any command tree contains pipes/redirections. */ 
