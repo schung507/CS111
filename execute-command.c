@@ -86,30 +86,30 @@ execute_command (command_t c, int profiling)
 
 void write_log(struct profiling_time* profile_times){
  
-  /*char time_string[1024];
+  char time_string[1024];
   //casting? 
-  double absolute_time= profile_times.absolute_time.tv_sec +  profile_times.absolute_time.tv_nsec/(double)BILLION;
-  double real_time_start =  profile_times.real_time_start.tv_sec +  profile_times.real_time_start.tv_nsec/(double)BILLION;
-  double real_time_end = profile_times.real_time_end.tv_sec +  profile_times.real_time_end.tv_nsec/(double)BILLION;
-  double user_time = profile_times.user_time.tv_sec +  profile_times.user_time.tv_usec/(double)MILLION;
-    double system_time = profile_times.system_time.tv_sec +  profile_times.system_time.tv_usec/(double)MILLION; 
+  double absolute_time= profile_times->absolute_time.tv_sec +  profile_times->absolute_time.tv_nsec/(double)BILLION;
+  double real_time_start =  profile_times->real_time_start.tv_sec +  profile_times->real_time_start.tv_nsec/(double)BILLION;
+  double real_time_end = profile_times->real_time_end.tv_sec +  profile_times->real_time_end.tv_nsec/(double)BILLION;
+  double user_time = profile_times->cpu_time.ru_utime.tv_sec +  profile_times->cpu_time.ru_utime.tv_usec/(double)MILLION;
+  double system_time = profile_times->cpu_time.ru_stime.tv_sec +  profile_times->cpu_time.ru_stime.tv_usec/(double)MILLION; 
 
   int string_counter = snprintf(time_string,1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, user_time, system_time);
  
   int command_counter = 0;
-  while(profile_times.command[command_counter] != NULL){
+  while(profile_times->command->u.word[command_counter] != NULL){
 
-    string_counter += snprintf(time_string+string_counter, 1023, " %s", *profile_times.command[command_counter]->u.word);
+    string_counter += snprintf(time_string+string_counter, 1023, " %s", profile_times->command->u.word[command_counter]);
     command_counter++;
   }
 
-  if(profile_times.command[0] == NULL){
-    string_counter += snprintf(time_string+string_counter, 1023, " [%d]", profile_times.process_id);
+  if(profile_times->command->u.word[0] == NULL){
+    string_counter += snprintf(time_string+string_counter, 1023, " [%d]", profile_times->process_id);
  }
 
   time_string[command_counter] = 0;
 
-  write(profile_descriptor, time_string, strlen(time_string)); */
+  write(profile_descriptor, time_string, strlen(time_string));
 }
 
 /*Will be recursively called in order to execute down the command
