@@ -83,6 +83,8 @@ execute_command (command_t c, int profiling)
   getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
 
   profile_times.process_id = getpid();
+
+  write_log(&profile_times);
 }
 
 void write_log(struct profiling_time* profile_times){
@@ -294,6 +296,8 @@ void execute_subshell(command_t c, int in, int out) {
     profile_times.process_id = p;
   }
 
+  write_log(&profile_times);
+
   if (WIFEXITED(status))
     c->status = WEXITSTATUS(status);
   else if (WIFSTOPPED(status))
@@ -346,6 +350,8 @@ void execute_pipe(command_t c, int in, int out){
       getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_end);
       profile_times_right.process_id = pid2;
 
+      write_log(&profile_times_right);
+
       exit(command_status(c->u.command[1]));
 
     case -1:
@@ -363,12 +369,14 @@ void execute_pipe(command_t c, int in, int out){
     getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_end);
     profile_times_left.process_id = pid1;
 
+    write_log(&profile_times_left);
+
     c->status = WEXITSTATUS(status);
     break;
   case -1:
     perror("Failed fork first time");
     exit(1);
   }
-  
+
 }
 
