@@ -16,7 +16,7 @@ command_t simple_command_parser(struct token* simple_token, int size_simple) {
   simple_statement->type = SIMPLE_COMMAND;
   simple_statement->u.word = (char**)checked_malloc(WORD_SIZE*sizeof(char*));
   //*simple_statement->u.word = (char*)checked_malloc(WORD_SIZE*sizeof(char));
-  
+  simple_statement->u.word[0] = NULL;
   //Check for redirection
    input_checker(simple_token, size, simple_statement);
 
