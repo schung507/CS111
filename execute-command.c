@@ -27,8 +27,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#define BILLION 1000000000
+#define MILLION 1000000
 
-int profile_descriptor;
+static int profile_descriptor;
 
 struct profiling_time {
   struct timespec absolute_time;
@@ -36,9 +38,11 @@ struct profiling_time {
   struct timespec real_time_end;
   struct timeval user_time;
   struct timeval system_time;
+  struct command **command;
+  int process_id;
 };
 
-void write_log(struct profiling_time profile_times, int profile_descriptor);
+void write_log(struct profiling_time profile_times);
 void r_execute(command_t c, int in, int out);
 void execute_if(command_t c, int in, int out);
 void execute_while(command_t c, int in, int out);
@@ -73,21 +77,34 @@ execute_command (command_t c, int profiling)
   clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
 }
 
-void write_log(struct profiling_time profile_times, int profile_descriptor){
+void write_log(struct profiling_time profile_times){
  
-  char time_string[100];
+  char time_string[1024];
   //casting? 
-  /*profile_times.absolute_times.tv_nsec =(double)profile_times.absolute_times.tv_nsec;
-profile_times.real_time_start.tv_nsec =(double)profile_times.real_time_start.tv_nsec;
-profile_times.real_time_end.tv_nsec =(double)profile_times.real_time_end.tv_nsec;
-profile_times.real_user_time.tv_usec =(double)profile_times.real_user_time.tv_nsec;
-profile_times.system_time.tv_usec =(double)profile_times.system_time.tv_nsec; 
-  */
+  double absolute_time= profile_times.absolute_time.tv_sec +  profile_times.absolute_time.tv_nsec/(double)BILLION;
+  double real_time_start =  profile_times.real_time_start.tv_sec +  profile_times.real_time_start.tv_nsec/(double)BILLION;
+  double real_time_end = profile_times.real_time_end.tv_sec +  profile_times.real_time_end.tv_nsec/(double)BILLION;
+  double user_time = profile_times.user_time.tv_sec +  profile_times.user_time.tv_usec/(double)MILLION;
+  double system_time = profile_times.system_time.tv_sec +  profile_times.system_time.tv_usec/(double)MILLION;
+
+  int string_counter = snprintf(time_string,1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, user_time, system_time);
+ 
+  int command_counter = 0;
+  while(profile_times.command[command_counter] != NULL){
+
+    string_counter += snprintf(time_string+string_counter, 1023, " %s", *profile_times.command[command_counter]->u.word);
+    command_counter++;
+  }
+
+  if(profile_times.command[0] != NULL){
+    string_counter += snprintf(time_string+string_counter, 1023, " [%d]", profile_times.process_id);
+ }
+
+  time_string[command_counter] = 0;
 
   write(profile_descriptor, time_string, strlen(time_string));
-
-
 }
+
 /*Will be recursively called in order to execute down the command
 trees. The two last arguments will represent the file descriptor 
 numbers if any command tree contains pipes/redirections. */ 
