@@ -92,25 +92,30 @@ void write_log(struct profiling_time* profile_times){
   double absolute_time= profile_times->absolute_time.tv_sec +  profile_times->absolute_time.tv_nsec/(double)BILLION;
   double real_time_start =  profile_times->real_time_start.tv_sec +  profile_times->real_time_start.tv_nsec/(double)BILLION;
   double real_time_end = profile_times->real_time_end.tv_sec +  profile_times->real_time_end.tv_nsec/(double)BILLION;
-  /* double user_time = profile_times->cpu_time.ru_utime.tv_sec +  profile_times->cpu_time.ru_utime.tv_usec/(double)MILLION;
-     double system_time = profile_times->cpu_time.ru_stime.tv_sec +  profile_times->cpu_time.ru_stime.tv_usec/(double)MILLION; */ 
-
-  int string_counter = snprintf(time_string,1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, /*user_time*/, system_time); 
- 
+  double user_time_start = profile_times->cpu_time_start.ru_utime.tv_sec +  profile_times->cpu_time_start.ru_utime.tv_usec/(double)MILLION;
+  double system_time_start = profile_times->cpu_time_start.ru_stime.tv_sec +  profile_times->cpu_time_start.ru_stime.tv_usec/(double)MILLION;  
+  double user_time_end = profile_times->cpu_time_end.ru_utime.tv_sec +  profile_times->cpu_time_end.ru_utime.tv_usec/(double)MILLION;
+  double system_time_end = profile_times->cpu_time_end.ru_stime.tv_sec +  profile_times->cpu_time_end.ru_stime.tv_usec/(double)MILLION;
+  
+  int string_counter = snprintf(time_string, 1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, user_time_end-user_time_start, system_time_end-system_time_start); 
+  // printf("string counter: %d\n", string_counter);
+  //printf("%f %f %f %f\n", absolute_time, real_time_end-real_time_start, user_time_end-user_time_start, system_time_end-system_time_start);
   int command_counter = 0;
   while(profile_times->command->u.word[command_counter] != NULL){
-
-    string_counter += snprintf(time_string+string_counter, 1023, " %s", profile_times->command->u.word[command_counter]);
+    //printf("command: %s\n", profile_times->command->u.word[command_counter]);
+    string_counter += snprintf(time_string+string_counter, 1023-string_counter, " %s", profile_times->command->u.word[command_counter]);   
+ // printf("%d", string_counter);
     command_counter++;
   }
 
   if(profile_times->command->u.word[0] == NULL){
-    string_counter += snprintf(time_string+string_counter, 1023, " [%d]", profile_times->process_id);
- }
+    string_counter += snprintf(time_string+string_counter, 1023-string_counter, " [%d]", profile_times->process_id);
+    }
 
-  time_string[command_counter] = 0;
 
-  write(profile_descriptor, time_string, strlen(time_string));
+  time_string[string_counter] = '\n';
+  // printf("%s", time_string);
+  write(profile_descriptor, time_string, string_counter+1);
 }
 
 /*Will be recursively called in order to execute down the command
@@ -248,9 +253,11 @@ void execute_simple(command_t c, int in, int out) {
     waitpid(p, &status, 0);
     clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
     clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
-    getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
+  
+  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
     profile_times.command = c;
   }
+  write_log(&profile_times);
 
   if (WIFEXITED(status))   //check to see that wait exits normally
     c->status = WEXITSTATUS(status);   //set aassociated status
