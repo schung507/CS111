@@ -96,7 +96,7 @@ void write_log(struct profiling_time profile_times){
     command_counter++;
   }
 
-  if(profile_times.command[0] != NULL){
+  if(profile_times.command[0] == NULL){
     string_counter += snprintf(time_string+string_counter, 1023, " [%d]", profile_times.process_id);
  }
 
