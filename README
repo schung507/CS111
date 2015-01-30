@@ -10,3 +10,40 @@ Limitations:
 UPDATE
 -all test cases should work
 -if test case does not work, problem should be coming from parser.c
+
+UPDATE (as of Lab 1b):
+-parser.c should now handle all test cases
+
+Answers to Part 1c:
+
+For timing our processes, we used CLOCK_MONOTONIC to measure real time. This clock
+is more reliable than CLOCK_REALTIME because it times based on some unspecified point
+in the past regardless of what the time is in real world and therefore is not susceptible
+to time jumps (as is the case with CLOCK_REALTIME since it must measure by real world
+time since 1970). It is always increasing at the same rate with no way to jump, so it
+is the most reliable for timing processes.
+
+1. Yes, the first column of log output should be in nondecreasing order. The
+processes are not logged until all children/other subprocesses are  finished, so
+the last processes to be called (the innermost processes in the recursive execute)
+should be the first processes finished, and then once the child is returned
+the parent process can finish, and so on until we are back at the top process. 
+Because of this dependency, the processes can only return based on increasing time
+(since CLOCK_REALTIME measures from the Epoch).
+
+2. In our lab, no, it is not possible for the second column (real time) be less
+than the sum of the third and fourth columns (user and system time) because we are
+not running anything in parallel. If we were running in parallel, however, the clock
+real time would be less because it only accounts for the clock time it takes for the
+process to finish. The CPU time, on the other hand, takes the cumulative times of all
+the parallel processes and adds them up to be what the real time would be had the 
+process not run in parallel.
+
+3. The second, third, or fourth column should never be negative. We find these times
+by setting a start time for each process and an end time for each process. The end
+time is logged only after the process has finished, and the process cannot finish before
+it starts. Even if the process fails, it cannot go back in time; it should exit with
+real and CPU time returning in either 0 or less than a second once it realizes an error.
+Also, since CLOCK_MONOTONIC is used to measure real time, we know that that clock will
+always be increasing (it is not susceptible to time jumps) so the time it reflects is
+always accurate and the end time of a process will always be greater than the start time.
