@@ -38,7 +38,8 @@ struct profiling_time {
   struct timespec real_time_end;
   struct timespec abs_res;
   struct timespec real_res;
-  struct rusage cpu_time;
+  struct rusage cpu_time_start;
+  struct rusage cpu_time_end;
   command_t command;
   pid_t process_id;
 };
@@ -79,7 +80,7 @@ execute_command (command_t c, int profiling)
 
   clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
   clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
-  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time);
+  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
 
   profile_times.process_id = getpid();
 }
@@ -91,10 +92,10 @@ void write_log(struct profiling_time* profile_times){
   double absolute_time= profile_times->absolute_time.tv_sec +  profile_times->absolute_time.tv_nsec/(double)BILLION;
   double real_time_start =  profile_times->real_time_start.tv_sec +  profile_times->real_time_start.tv_nsec/(double)BILLION;
   double real_time_end = profile_times->real_time_end.tv_sec +  profile_times->real_time_end.tv_nsec/(double)BILLION;
-  double user_time = profile_times->cpu_time.ru_utime.tv_sec +  profile_times->cpu_time.ru_utime.tv_usec/(double)MILLION;
-  double system_time = profile_times->cpu_time.ru_stime.tv_sec +  profile_times->cpu_time.ru_stime.tv_usec/(double)MILLION; 
+  /* double user_time = profile_times->cpu_time.ru_utime.tv_sec +  profile_times->cpu_time.ru_utime.tv_usec/(double)MILLION;
+     double system_time = profile_times->cpu_time.ru_stime.tv_sec +  profile_times->cpu_time.ru_stime.tv_usec/(double)MILLION; */ 
 
-  int string_counter = snprintf(time_string,1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, user_time, system_time);
+  int string_counter = snprintf(time_string,1023, "%f %f %f %f", absolute_time, real_time_end-real_time_start, /*user_time*/, system_time); 
  
   int command_counter = 0;
   while(profile_times->command->u.word[command_counter] != NULL){
@@ -226,6 +227,7 @@ void execute_simple(command_t c, int in, int out) {
     error(1, 0, "Bad command"); 
   }
   clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_start);
+  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
   pid_t p = fork();
   if (p == 0) {   //We are in the child
     if (in != -1)  //Replace file descriptors if there are redirects/pipes
@@ -246,7 +248,7 @@ void execute_simple(command_t c, int in, int out) {
     waitpid(p, &status, 0);
     clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
     clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
-    getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time);
+    getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
     profile_times.command = c;
   }
 
@@ -267,6 +269,7 @@ void execute_subshell(command_t c, int in, int out) {
   clock_getres(CLOCK_MONOTONIC, &profile_times.real_res);
 
   clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_start);
+  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
   pid_t p = fork();
   //Error in forking
   if (p < 0) 
@@ -280,7 +283,7 @@ void execute_subshell(command_t c, int in, int out) {
     waitpid(p, &status, 0);
     clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
     clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
-    getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time);
+    getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
     profile_times.process_id = p;
   }
 
@@ -308,11 +311,13 @@ void execute_pipe(command_t c, int in, int out){
   pipe(fd);
 
   clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_start);
+  getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_start);
   switch (pid1 = fork()){
  
   case 0:
 
     clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_start);
+    getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_start);
     switch (pid2 = fork()) {
 
     case 0: /* grandchild */
@@ -331,7 +336,7 @@ void execute_pipe(command_t c, int in, int out){
       
       clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_end);
       clock_gettime(CLOCK_REALTIME, &profile_times_right.absolute_time);
-      getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time);
+      getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_end);
       profile_times_right.process_id = pid2;
 
       exit(command_status(c->u.command[1]));
@@ -348,7 +353,7 @@ void execute_pipe(command_t c, int in, int out){
 
     clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_end);
     clock_gettime(CLOCK_REALTIME, &profile_times_left.absolute_time);
-    getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time);
+    getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_end);
     profile_times_left.process_id = pid1;
 
     c->status = WEXITSTATUS(status);
