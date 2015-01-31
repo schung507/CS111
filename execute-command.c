@@ -28,6 +28,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <unistd.h>
 #define BILLION 1000000000
 #define MILLION 1000000
 
@@ -100,7 +101,18 @@ execute_command (command_t c, int profiling)
   profile_times.process_id = getpid();
 
   profile_times.command = NULL;
+
+  struct flock lock;
+  lock.l_type = F_WRLCK;
+  lock.l_start = 0;
+  lock.l_whence = SEEK_SET;
+  lock.l_len = 0;
+  lock.l_pid = getpid();
+
+  fcntl(profile_descriptor, F_SETLKW, &lock);
   write_log(&profile_times);
+  lock.l_type = F_UNLCK;
+  fcntl(profile_descriptor, F_SETLK, 0);
 }
 
 void write_log(struct profiling_time* profile_times){
@@ -116,9 +128,9 @@ void write_log(struct profiling_time* profile_times){
   double system_time_end = profile_times->cpu_time_end.ru_stime.tv_sec +  profile_times->cpu_time_end.ru_stime.tv_usec/(double)MILLION;
   
   int string_counter = snprintf(time_string, 1023, "%.*f %.*f %f %f",\
-				9-log(profile_times->abs_res.tv_nsec),\
+				(int)(9-log10(profile_times->abs_res.tv_nsec)),\
 				absolute_time,\
-				9-log(profile_times->real_res.tv_nsec),\
+				(int)(9-log10(profile_times->real_res.tv_nsec)),\
 				real_time_end - real_time_start,\
 				user_time_end - user_time_start,\
 				system_time_end - system_time_start); 
