@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 #define BILLION 1000000000
 #define MILLION 1000000
 
@@ -114,10 +115,12 @@ void write_log(struct profiling_time* profile_times){
   double user_time_end = profile_times->cpu_time_end.ru_utime.tv_sec +  profile_times->cpu_time_end.ru_utime.tv_usec/(double)MILLION;
   double system_time_end = profile_times->cpu_time_end.ru_stime.tv_sec +  profile_times->cpu_time_end.ru_stime.tv_usec/(double)MILLION;
   
-  int string_counter = snprintf(time_string, 1023, "%0.9f %0.9f %f %f", 
-				absolute_time, 
-				real_time_end - real_time_start, 
-				user_time_end - user_time_start, 
+  int string_counter = snprintf(time_string, 1023, "%.*f %.*f %f %f",\
+				9-log(profile_times->abs_res.tv_nsec),\
+				absolute_time,\
+				9-log(profile_times->real_res.tv_nsec),\
+				real_time_end - real_time_start,\
+				user_time_end - user_time_start,\
 				system_time_end - system_time_start); 
   // printf("string counter: %d\n", string_counter);
   //printf("%f %f %f %f\n", absolute_time, real_time_end-real_time_start, user_time_end-user_time_start, system_time_end-system_time_start);
