@@ -47,7 +47,7 @@ void execute_pipe(command_t c, int in, int out);
 int
 prepare_profiling (char const *name)
 {
-  return open(name, O_WRONLY|O_CREAT|O_APPEND);
+  return open(name, O_RDWR|O_CREAT|O_APPEND);
 }
 
 int
