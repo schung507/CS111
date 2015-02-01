@@ -47,7 +47,7 @@ void execute_pipe(command_t c, int in, int out);
 int
 prepare_profiling (char const *name)
 {
-  return open(name, O_WRONLY|O_CREAT|O_APPEND);
+  return open(name, O_RDWR|O_CREAT|O_APPEND);
 }
 
 int
@@ -62,11 +62,12 @@ execute_command (command_t c, int profiling)
   profile_descriptor = profiling;
 
   r_execute(c, -1, -1); //no file descriptors are yet set
+
 }
 
 void write_log(struct profiling_time* profile_times){
  
-
+ 
   char time_string[1024];
   //casting? 
   double absolute_time= profile_times->absolute_time.tv_sec +  profile_times->absolute_time.tv_nsec/(double)BILLION;
@@ -108,7 +109,6 @@ void write_log(struct profiling_time* profile_times){
   lock.l_whence = SEEK_SET;
   lock.l_len = 0;
   lock.l_pid = getpid();
-  
   fcntl(profile_descriptor, F_SETLKW, &lock); 
   
   write(profile_descriptor, time_string, string_counter+1);
@@ -329,7 +329,7 @@ void execute_pipe(command_t c, int in, int out){
      
     close(fd[0]);/*does not need this end of the pipe */
     r_execute(c->u.command[0], in, fd[1]);
-    
+    close(fd[1]);
     exit(command_status(c->u.command[0]));
   
   case -1:
@@ -347,7 +347,7 @@ void execute_pipe(command_t c, int in, int out){
       close(fd[1]);
       r_execute(c->u.command[1], fd[0], out);
       /*printf("BEFORE\n");*/
-      //  close(fd[0]);
+      close(fd[0]);
       //waitpid(pid2, &status, 0);
       
       //write_log(&profile_times_right);
@@ -363,31 +363,29 @@ void execute_pipe(command_t c, int in, int out){
       close(fd[1]);
 
       memset(&profile_times_left.cpu_time_start, 0, sizeof(struct rusage));
-      memset(&profile_times_right.cpu_time_start, 0, sizeof(struct rusage));
-      
       wait4(pid1, &status,0, &profile_times_left.cpu_time_end);
-      wait4(pid2, &status,0, &profile_times_right.cpu_time_end); 
 
-      
       clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_end);
       clock_gettime(CLOCK_REALTIME, &profile_times_left.absolute_time);
       getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_end);
       profile_times_left.process_id = pid1;
-
       profile_times_left.command = NULL;
 
       write_log(&profile_times_left);
-    
+      
+      memset(&profile_times_right.cpu_time_start, 0, sizeof(struct rusage));
+      wait4(pid2, &status,0, &profile_times_right.cpu_time_end); 
+      
       clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_end);
       clock_gettime(CLOCK_REALTIME, &profile_times_right.absolute_time);
       getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_end);
       profile_times_right.process_id = pid2;
-
       profile_times_right.command = NULL;
-
-      write_log(&profile_times_right);
       
+      write_log(&profile_times_right);
+     
       c->status = WEXITSTATUS(status);
+ 
       break;
     }
 
