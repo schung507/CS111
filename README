@@ -23,13 +23,11 @@ to time jumps (as is the case with CLOCK_REALTIME since it must measure by real 
 time since 1970). It is always increasing at the same rate with no way to jump, so it
 is the most reliable for timing processes.
 
-1. Yes, the first column of log output should be in nondecreasing order. The
-processes are not logged until all children/other subprocesses are  finished, so
-the last processes to be called (the innermost processes in the recursive execute)
-should be the first processes finished, and then once the child is returned
-the parent process can finish, and so on until we are back at the top process. 
-Because of this dependency, the processes can only return based on increasing time
-(since CLOCK_REALTIME measures from the Epoch).
+1. No, absolute time will not always be guaranteed to be nondecreasing based on the
+nature of CLOCK_REALTIME. If CLOCK_REALTIME is reset anytime during the process (because
+it is set to the specified date in 1970), it can jump forward or back based on that
+reset. If it jumps back, then the times printing out after the jump back can be less than
+what was already printing out.
 
 2. In our lab, no, it is not possible for the second column (real time) be less
 than the sum of the third and fourth columns (user and system time) because we are
@@ -39,11 +37,13 @@ process to finish. The CPU time, on the other hand, takes the cumulative times o
 the parallel processes and adds them up to be what the real time would be had the 
 process not run in parallel.
 
-3. The second, third, or fourth column should never be negative. We find these times
-by setting a start time for each process and an end time for each process. The end
-time is logged only after the process has finished, and the process cannot finish before
-it starts. Even if the process fails, it cannot go back in time; it should exit with
-real and CPU time returning in either 0 or less than a second once it realizes an error.
-Also, since CLOCK_MONOTONIC is used to measure real time, we know that that clock will
-always be increasing (it is not susceptible to time jumps) so the time it reflects is
-always accurate and the end time of a process will always be greater than the start time.
+3. The second, third, or fourth column can possibly be negative in the case of overflow.
+CLOCK_MONOTONIC and CLOCK_REALTIME measure with signed integers, so if the process runs
+long enough then overflow can occur and the overly positive time will overflow into 
+negative time (very large power of 2 so it likely wouldn't occur unless it is a VERY 
+long process, probably not something that would be run in this class).
+
+4. Interleaving is not possible because none of our processes run in parallel. In the
+case of processes running in parallel, however, locking the file as its being written to 
+for one process and unlocking it once that processes finishes should prevent the writing
+from different processes from interfering with each other.
