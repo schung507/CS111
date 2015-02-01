@@ -16,6 +16,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef COMMAND_INT_H
 #define COMMAND_INT_H
+#include <time.h>
+#include <sys/resource.h>
 enum command_type
   {
     IF_COMMAND,		 // if A then B else C fi
@@ -74,4 +76,19 @@ struct token {
   int size;
   enum token_types token_type;
 };
+
+struct profiling_time {
+  struct timespec absolute_time;
+  struct timespec real_time_start;
+  struct timespec real_time_end;
+  struct timespec abs_res;
+  struct timespec real_res;
+  struct rusage cpu_time_start;
+  struct rusage cpu_time_end;
+  command_t command;
+  pid_t process_id;
+};
+
+void write_log(struct profiling_time* profile_times);
+
 #endif

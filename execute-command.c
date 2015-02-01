@@ -1,5 +1,4 @@
 // UCLA CS 111 Lab 1 command execution
-
 // Copyright 2012-2014 Paul Eggert.
 
 // This program is free software: you can redistribute it and/or modify
@@ -34,19 +33,8 @@
 
 static int profile_descriptor;
 
-struct profiling_time {
-  struct timespec absolute_time;
-  struct timespec real_time_start;
-  struct timespec real_time_end;
-  struct timespec abs_res;
-  struct timespec real_res;
-  struct rusage cpu_time_start;
-  struct rusage cpu_time_end;
-  command_t command;
-  pid_t process_id;
-};
 
-void write_log(struct profiling_time* profile_times);
+/*Write timing information to a file*/
 void r_execute(command_t c, int in, int out);
 void execute_if(command_t c, int in, int out);
 void execute_while(command_t c, int in, int out);
@@ -72,36 +60,12 @@ void
 execute_command (command_t c, int profiling)
 {
   profile_descriptor = profiling;
-  struct profiling_time profile_times;
-  struct profiling_time profile_times_temp;
-  clock_getres(CLOCK_REALTIME, &profile_times.abs_res);
-  clock_getres(CLOCK_MONOTONIC, &profile_times.real_res);
-
-  clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_start);
-  getrusage(RUSAGE_SELF, &profile_times_temp.cpu_time_start);
-  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
 
   r_execute(c, -1, -1); //no file descriptors are yet set
+}
 
-  clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
-  clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
-  getrusage(RUSAGE_SELF, &profile_times_temp.cpu_time_end);
-  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
-
-  //LOL this is so gross
-  profile_times.cpu_time_start.ru_utime.tv_sec = profile_times.cpu_time_start.ru_utime.tv_sec + profile_times_temp.cpu_time_start.ru_utime.tv_sec;
-  profile_times.cpu_time_start.ru_utime.tv_usec = profile_times.cpu_time_start.ru_utime.tv_usec + profile_times_temp.cpu_time_start.ru_utime.tv_usec;
-  profile_times.cpu_time_end.ru_utime.tv_sec = profile_times.cpu_time_end.ru_utime.tv_sec + profile_times_temp.cpu_time_end.ru_utime.tv_sec;
-  profile_times.cpu_time_end.ru_utime.tv_usec = profile_times.cpu_time_end.ru_utime.tv_usec + profile_times_temp.cpu_time_end.ru_utime.tv_usec;
-  profile_times.cpu_time_start.ru_stime.tv_sec = profile_times.cpu_time_start.ru_stime.tv_sec + profile_times_temp.cpu_time_start.ru_stime.tv_sec;
-  profile_times.cpu_time_start.ru_stime.tv_usec = profile_times.cpu_time_start.ru_stime.tv_usec + profile_times_temp.cpu_time_start.ru_stime.tv_usec;
-  profile_times.cpu_time_end.ru_stime.tv_sec = profile_times.cpu_time_end.ru_stime.tv_sec + profile_times_temp.cpu_time_end.ru_stime.tv_sec;
-  profile_times.cpu_time_end.ru_stime.tv_usec = profile_times.cpu_time_end.ru_stime.tv_usec + profile_times_temp.cpu_time_end.ru_stime.tv_usec;
-
-  profile_times.process_id = getpid();
-
-  profile_times.command = NULL;
-
+void write_log(struct profiling_time* profile_times){
+ 
   struct flock lock;
   lock.l_type = F_WRLCK;
   lock.l_start = 0;
@@ -109,14 +73,8 @@ execute_command (command_t c, int profiling)
   lock.l_len = 0;
   lock.l_pid = getpid();
 
-  fcntl(profile_descriptor, F_SETLKW, &lock);
-  write_log(&profile_times);
-  lock.l_type = F_UNLCK;
-  fcntl(profile_descriptor, F_SETLK, 0);
-}
+  fcntl(profile_descriptor, F_SETLKW, &lock); 
 
-void write_log(struct profiling_time* profile_times){
- 
   char time_string[1024];
   //casting? 
   double absolute_time= profile_times->absolute_time.tv_sec +  profile_times->absolute_time.tv_nsec/(double)BILLION;
@@ -138,10 +96,10 @@ void write_log(struct profiling_time* profile_times){
   //printf("%f %f %f %f\n", absolute_time, real_time_end-real_time_start, user_time_end-user_time_start, system_time_end-system_time_start);
   int command_counter = 0;
 
-  if(profile_times->command == NULL){
+  if (profile_times->command == NULL){
     string_counter += snprintf(time_string+string_counter, 1023-string_counter, " [%d]", profile_times->process_id);
   }
-  else{
+  else {
     while(profile_times->command->u.word[command_counter] != NULL){
     //printf("command: %s\n", profile_times->command->u.word[command_counter]);
       string_counter += snprintf(time_string+string_counter, 1023-string_counter, " %s", profile_times->command->u.word[command_counter]);   
@@ -153,6 +111,9 @@ void write_log(struct profiling_time* profile_times){
   time_string[string_counter] = '\n';
   // printf("%s", time_string);
   write(profile_descriptor, time_string, string_counter+1);
+
+  lock.l_type = F_UNLCK;
+  fcntl(profile_descriptor, F_SETLK, 0); 
 }
 
 /*Will be recursively called in order to execute down the command
@@ -386,6 +347,7 @@ void execute_pipe(command_t c, int in, int out){
       profile_times_right.process_id = pid2;
 
       profile_times_right.command = NULL;
+
       write_log(&profile_times_right);
 
       exit(command_status(c->u.command[1]));

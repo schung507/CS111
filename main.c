@@ -20,8 +20,12 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "command.h"
+#include "command-internals.h"
 
 static char const *program_name;
 static char const *script_name;
@@ -80,6 +84,17 @@ main (int argc, char **argv)
 
   command_t last_command = NULL;
   command_t command;
+
+   struct profiling_time profile_times;
+   struct profiling_time profile_times_temp;
+   clock_getres(CLOCK_REALTIME, &profile_times.abs_res);
+   clock_getres(CLOCK_MONOTONIC, &profile_times.real_res);
+
+   clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_start);
+   getrusage(RUSAGE_SELF, &profile_times_temp.cpu_time_start);
+   getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_start);
+
+
   while ((command = read_command_stream (command_stream)))
     {
       if (print_tree)
@@ -90,9 +105,30 @@ main (int argc, char **argv)
       else
 	{
 	  last_command = command;
+	  	  
 	  execute_command (command, profiling);
 	}
     }
+
+  clock_gettime(CLOCK_MONOTONIC, &profile_times.real_time_end);
+  clock_gettime(CLOCK_REALTIME, &profile_times.absolute_time);
+  getrusage(RUSAGE_SELF, &profile_times_temp.cpu_time_end);
+  getrusage(RUSAGE_CHILDREN, &profile_times.cpu_time_end);
+
+  profile_times.cpu_time_start.ru_utime.tv_sec = profile_times.cpu_time_start.ru_utime.tv_sec + profile_times_temp.cpu_time_start.ru_utime.tv_sec;
+  profile_times.cpu_time_start.ru_utime.tv_usec = profile_times.cpu_time_start.ru_utime.tv_usec + profile_times_temp.cpu_time_start.ru_utime.tv_usec;
+  profile_times.cpu_time_end.ru_utime.tv_sec = profile_times.cpu_time_end.ru_utime.tv_sec + profile_times_temp.cpu_time_end.ru_utime.tv_sec;
+  profile_times.cpu_time_end.ru_utime.tv_usec = profile_times.cpu_time_end.ru_utime.tv_usec + profile_times_temp.cpu_time_end.ru_utime.tv_usec;
+  profile_times.cpu_time_start.ru_stime.tv_sec = profile_times.cpu_time_start.ru_stime.tv_sec + profile_times_temp.cpu_time_start.ru_stime.tv_sec;
+  profile_times.cpu_time_start.ru_stime.tv_usec = profile_times.cpu_time_start.ru_stime.tv_usec + profile_times_temp.cpu_time_start.ru_stime.tv_usec;
+  profile_times.cpu_time_end.ru_stime.tv_sec = profile_times.cpu_time_end.ru_stime.tv_sec + profile_times_temp.cpu_time_end.ru_stime.tv_sec;
+  profile_times.cpu_time_end.ru_stime.tv_usec = profile_times.cpu_time_end.ru_stime.tv_usec + profile_times_temp.cpu_time_end.ru_stime.tv_usec;
+
+  profile_times.process_id = getpid();
+
+  profile_times.command = NULL;
+ 
+  write_log(&profile_times);
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }

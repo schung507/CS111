@@ -16,6 +16,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef COMMAND_H
 #define COMMAND_H
+
 typedef struct command *command_t;
 typedef struct command_stream *command_stream_t;
 
