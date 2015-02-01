@@ -66,14 +66,6 @@ execute_command (command_t c, int profiling)
 
 void write_log(struct profiling_time* profile_times){
  
-  struct flock lock;
-  lock.l_type = F_WRLCK;
-  lock.l_start = 0;
-  lock.l_whence = SEEK_SET;
-  lock.l_len = 0;
-  lock.l_pid = getpid();
-
-  fcntl(profile_descriptor, F_SETLKW, &lock); 
 
   char time_string[1024];
   //casting? 
@@ -110,10 +102,19 @@ void write_log(struct profiling_time* profile_times){
 
   time_string[string_counter] = '\n';
   // printf("%s", time_string);
+  struct flock lock;
+  lock.l_type = F_WRLCK;
+  lock.l_start = 0;
+  lock.l_whence = SEEK_SET;
+  lock.l_len = 0;
+  lock.l_pid = getpid();
+  
+  fcntl(profile_descriptor, F_SETLKW, &lock); 
+  
   write(profile_descriptor, time_string, string_counter+1);
 
   lock.l_type = F_UNLCK;
-  fcntl(profile_descriptor, F_SETLK, 0); 
+  fcntl(profile_descriptor, F_SETLK, &lock); 
 }
 
 /*Will be recursively called in order to execute down the command
@@ -314,33 +315,69 @@ void execute_pipe(command_t c, int in, int out){
   clock_getres(CLOCK_MONOTONIC, &profile_times_left.real_res);
   clock_getres(CLOCK_REALTIME, &profile_times_right.abs_res);
   clock_getres(CLOCK_MONOTONIC, &profile_times_right.real_res);
-
+  clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_start);
+  clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_start);
+ 
   pipe(fd);
 
-  clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_start);
-  getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_start);
+  
   switch (pid1 = fork()){
  
   case 0:
 
-    clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_start);
-    getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_start);
-    switch (pid2 = fork()) {
-
-    case 0: /* grandchild */
+       //getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_start);
      
-      close(fd[0]);/*does not need this end of the pipe */
-      r_execute(c->u.command[0], in, fd[1]);
-      exit(command_status(c->u.command[0]));
+    close(fd[0]);/*does not need this end of the pipe */
+    r_execute(c->u.command[0], in, fd[1]);
+    
+    exit(command_status(c->u.command[0]));
+  
+  case -1:
+    perror("Failed fork first time");
+    exit(1);
+  
+  default:/*parent*/
 
-     
-    default: /*child*/
+    switch(pid2 = fork()){
+    
+    case 0:
+  
+      //getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_start);
+  
       close(fd[1]);
       r_execute(c->u.command[1], fd[0], out);
       /*printf("BEFORE\n");*/
-      close(fd[0]);
-      waitpid(pid2, &status, 0);
+      //  close(fd[0]);
+      //waitpid(pid2, &status, 0);
       
+      //write_log(&profile_times_right);
+
+      exit(command_status(c->u.command[1]));
+
+    case -1:
+      perror("Failed to fork second time");
+      exit(1);
+
+    default:
+      close(fd[0]);
+      close(fd[1]);
+
+      memset(&profile_times_left.cpu_time_start, 0, sizeof(struct rusage));
+      memset(&profile_times_right.cpu_time_start, 0, sizeof(struct rusage));
+      
+      wait4(pid1, &status,0, &profile_times_left.cpu_time_end);
+      wait4(pid2, &status,0, &profile_times_right.cpu_time_end); 
+
+      
+      clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_end);
+      clock_gettime(CLOCK_REALTIME, &profile_times_left.absolute_time);
+      getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_end);
+      profile_times_left.process_id = pid1;
+
+      profile_times_left.command = NULL;
+
+      write_log(&profile_times_left);
+    
       clock_gettime(CLOCK_MONOTONIC, &profile_times_right.real_time_end);
       clock_gettime(CLOCK_REALTIME, &profile_times_right.absolute_time);
       getrusage(RUSAGE_CHILDREN, &profile_times_right.cpu_time_end);
@@ -349,32 +386,11 @@ void execute_pipe(command_t c, int in, int out){
       profile_times_right.command = NULL;
 
       write_log(&profile_times_right);
-
-      exit(command_status(c->u.command[1]));
-
-    case -1:
-      perror("Failed to fork second time");
-      exit(1);
+      
+      c->status = WEXITSTATUS(status);
+      break;
     }
 
-  default:/*parent*/
-    close(fd[0]);
-    close(fd[1]);
-    waitpid( pid1, &status, 0);
-
-    clock_gettime(CLOCK_MONOTONIC, &profile_times_left.real_time_end);
-    clock_gettime(CLOCK_REALTIME, &profile_times_left.absolute_time);
-    getrusage(RUSAGE_CHILDREN, &profile_times_left.cpu_time_end);
-    profile_times_left.process_id = pid1;
-
-    profile_times_left.command = NULL;
-    write_log(&profile_times_left);
-
-    c->status = WEXITSTATUS(status);
-    break;
-  case -1:
-    perror("Failed fork first time");
-    exit(1);
   }
 
 }
