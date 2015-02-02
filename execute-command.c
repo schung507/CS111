@@ -20,6 +20,7 @@
 #include <error.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -47,7 +48,8 @@ void execute_pipe(command_t c, int in, int out);
 int
 prepare_profiling (char const *name)
 {
-  return open(name, O_RDWR|O_CREAT|O_APPEND);
+  chmod(name, S_IRWXU|S_IRWXG|S_IROTH|S_IWOTH);
+  return open(name, O_WRONLY|O_CREAT|O_APPEND, 0666);
 }
 
 int
@@ -114,7 +116,7 @@ void write_log(struct profiling_time* profile_times){
   write(profile_descriptor, time_string, string_counter+1);
 
   lock.l_type = F_UNLCK;
-  fcntl(profile_descriptor, F_SETLK, &lock); 
+  fcntl(profile_descriptor, F_SETLK, &lock);
 }
 
 /*Will be recursively called in order to execute down the command
