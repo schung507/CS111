@@ -34,10 +34,12 @@ hello
 hi
 EOF
 
-../profsh -p profile_times test.sh >test.out 2>test.err || exit
-cat profile_times | sed '/[0-9]*\.[0-9]\{9\}\ [0-9]*\.[0-9]\{9\}\ [0-9]*\.[0-9]\{6\}\ [0-9]*\.[0-9]\{6\}\ /d' | sed '/\n/d'> output 
+../profsh -p profile_times test.sh > /dev/null || exit
+cat profile_times | sed '/[0-9]*\.[0-9]\{9\}\ [0-9]*\.[0-9]\{9\}\ [0-9]*\.[0-9]\{6\}\ [0-9]*\.[0-9]\{6\}\ /d'> output 
 
 test ! -s output || exit
+
+../profsh test.sh >test.out 2>test.err || exit
 
 diff -u test.exp test.out || exit
 test ! -s test.err || {
