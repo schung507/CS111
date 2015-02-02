@@ -105,18 +105,18 @@ void write_log(struct profiling_time* profile_times){
 
   time_string[string_counter] = '\n';
   // printf("%s", time_string);
-  struct flock lock;
+  /*  struct flock lock;
   lock.l_type = F_WRLCK;
   lock.l_start = 0;
   lock.l_whence = SEEK_SET;
   lock.l_len = 0;
   lock.l_pid = getpid();
   fcntl(profile_descriptor, F_SETLKW, &lock); 
-  
+  */
   write(profile_descriptor, time_string, string_counter+1);
 
-  lock.l_type = F_UNLCK;
-  fcntl(profile_descriptor, F_SETLK, &lock);
+  //lock.l_type = F_UNLCK;
+  //fcntl(profile_descriptor, F_SETLK, &lock);
 }
 
 /*Will be recursively called in order to execute down the command
