@@ -3,16 +3,7 @@ This is a skeleton for CS 111 Lab 1.
 Partner: Lynn Hao Tran
 
 Limitations:
--Our parser can't handle sequence commands sometimes when it contains parantheses
--Prints out undefined garbage sometimes because it accesses null pointer somewhere
--in execution, command hangs sometimes when it handles large files
-
-UPDATE
--all test cases should work
--if test case does not work, problem should be coming from parser.c
-
-UPDATE (as of Lab 1b):
--parser.c should now handle all test cases
+-Profiling is EXTREMELY slow for pipes
 
 Answers to Part 1c:
 
