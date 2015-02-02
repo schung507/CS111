@@ -4,6 +4,8 @@ Partner: Lynn Hao Tran
 
 Limitations:
 -Profiling is EXTREMELY slow for pipes
+-We added a lock but it hindered performace greatly so we commented the code out
+-with the lock everything still works, but commands are really slow
 
 Answers to Part 1c:
 
