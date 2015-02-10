@@ -34,7 +34,7 @@
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_DESCRIPTION("CS 111 RAM Disk");
 // EXERCISE: Pass your names into the kernel as the module's authors.
-MODULE_AUTHOR("Skeletor");
+MODULE_AUTHOR("Stella Chung");
 
 #define OSPRD_MAJOR	222
 
@@ -107,7 +107,8 @@ static void for_each_open_file(struct task_struct *task,
  */
 static void osprd_process_request(osprd_info_t *d, struct request *req)
 {
-	if (!blk_fs_request(req)) {
+        int i;
+        if (!blk_fs_request(req)) {
 		end_request(req, 0);
 		return;
 	}
@@ -117,11 +118,24 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// Hint: The 'struct request' argument tells you what kind of request
 	// this is, and which sectors are being read or written.
 	// Read about 'struct request' in <linux/blkdev.h>.
-	// Consider the 'req->sector', 'req->current_nr_sectors', and
+   	// Consider the 'req->sector', 'req->current_nr_sectors', and
 	// 'req->buffer' members, and the rq_data_dir() function.
+	
+	if(rq_data_dir(req)== READ){
+      	  for(i = req->sector; i < req->current_nr_sectors; i++){
+	    memcpy(req->buffer, d->data + i*SECTOR_SIZE, SECTOR_SIZE); 
+	  }
+	}
+	else if (rq_data_dir(req)== WRITE){
+	  for(i = req->sector; i < req->current_nr_sectors; i++){
+            memcpy(d->data + i*SECTOR_SIZE, req->buffer, SECTOR_SIZE);
+          }
 
-	// Your code here.
-	eprintk("Should process request...\n");
+	}
+	else{
+	  printf("could not process request");
+	}
+	//eprintk("Should process request...\n");
 
 	end_request(req, 1);
 }
