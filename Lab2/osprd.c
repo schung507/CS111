@@ -122,12 +122,12 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// 'req->buffer' members, and the rq_data_dir() function.
 	
 	if(rq_data_dir(req)== READ){
-      	  for(i = req->sector; i < req->current_nr_sectors; i++){
+      	  for(i = req->sector; i < req->sector+req->current_nr_sectors; i++){
 	    memcpy(req->buffer, d->data + i*SECTOR_SIZE, SECTOR_SIZE); 
 	  }
 	}
 	else if (rq_data_dir(req)== WRITE){
-	  for(i = req->sector; i < req->current_nr_sectors; i++){
+	  for(i = req->sector; i < req->sector+req->current_nr_sectors; i++){
             memcpy(d->data + i*SECTOR_SIZE, req->buffer, SECTOR_SIZE);
           }
 
