@@ -170,13 +170,27 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
+		if(filp->f_flags & F_OSPRD_LOCKED == 0)
+		  r = -EINVAL;
 
+		osp_spin_lock(&d->mutex);
+		filp->f_flags &= ~F_OSPRD_LOCKED;
+
+	       
+		  d->write_lock_num = 0;
+		  d->read_lock_num = 0;
+		  d->pid = -1;
+		 
+	        osp_spin_unlock(&d->mutex);
+
+		wake_up_all(d->blockq);
+		r = 0;
 		// This line avoids compiler warnings; you may remove it.
-		(void) filp_writable, (void) d;
+		//(void) filp_writable, (void) d;
 
 	}
 
-	return 0;
+	return r;
 }
 
 
@@ -331,11 +345,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	  
 	  filp->f_flags &= ~F_OSPRD_LOCKED;
 	  
-	  if(filp->writable){
+	 
 	    d->write_lock_num = 0;
 	    d->pid = -1;
-	  }
-	  else
 	    d->read_lock_num = 0;
 	  
 	  wake_up_all(d->blockq);
