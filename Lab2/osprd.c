@@ -244,9 +244,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//r = -ENOTTY;
 
 	  if(filp_writable){
-
+	    osp_spin_lock(&d->mutex);
 	    int local_ticket = d->ticket_head++;
-	  
+	    osp_spin_unlock(&d->mutex);
+
 	    int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->read_lock_num == 0 && d->ticket_tail == local_ticket);
 
 	    if(ready != 0){
@@ -262,7 +263,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	  }
 	  else{
 
+	    osp_spin_lock(&d->mutex);
 	    int local_ticket = d->ticket_head++;
+	    osp_spin_lock(&d->mutex);
 
             int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->ticket_tail == local_ticket);
 
@@ -325,14 +328,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//r = -ENOTTY;
 	  if(filp->f_flags & F_OSPRD_LOCKED == 0)
 	    r = -EINVAL;
+	  
 	  filp->f_flags &= ~F_OSPRD_LOCKED;
 	  
 	  if(filp->writable){
 	    d->write_lock_num = 0;
-	    d->p
+	    d->pid = -1;
 	  }
 	  else
 	    d->read_lock_num = 0;
+	  
 	  wake_up_all(d->blockq);
 
 
@@ -352,6 +357,7 @@ static void osprd_setup(osprd_info_t *d)
 	d->ticket_head = d->ticket_tail = 0;
 	d->write_lock_num = 0;
 	d->read_lock_num = 0;
+	d->pid = -1;
 	/* Add code here if you add fields to osprd_info_t. */
 }
 
