@@ -124,16 +124,17 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// Read about 'struct request' in <linux/blkdev.h>.
    	// Consider the 'req->sector', 'req->current_nr_sectors', and
 	// 'req->buffer' members, and the rq_data_dir() function.
-	
+
+	int offset = req->sector*SECTOR_SIZE;
+	int bytes = req->current_nr_sectors*SECTOR_SIZE;
+
 	if(rq_data_dir(req)== READ){
-      	  for(i = req->sector; i < req->sector+req->current_nr_sectors; i++){
-	    memcpy(req->buffer, d->data + i*SECTOR_SIZE, SECTOR_SIZE); 
-	  }
+	    memcpy(req->buffer, d->data + offset, bytes); 
 	}
 	else if (rq_data_dir(req)== WRITE){
-	  for(i = req->sector; i < req->sector+req->current_nr_sectors; i++){
-            memcpy(d->data + i*SECTOR_SIZE, req->buffer, SECTOR_SIZE);
-          }
+	  
+            memcpy(d->data + offset, req->buffer, bytes);
+  
 
 	}
 	else{
