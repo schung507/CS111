@@ -264,15 +264,16 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 	    int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->read_lock_num == 0 && d->ticket_tail == local_ticket);
 
-	    if(ready != 0){
+	    /*if(ready != 0){
 	      d->ticket_tail++;
 	      return ready;
-	    }
+	      }*/
 	    
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
-	    d->ticket_tail++;
+	    /*d->ticket_tail++;*/
+	    r = 0;
 
 	  }
 	  else{
@@ -280,18 +281,20 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    osp_spin_lock(&d->mutex);
 	    int local_ticket = d->ticket_head;
 	    d->ticket_head++;
-	    osp_spin_lock(&d->mutex);
+	    osp_spin_unlock(&d->mutex);
 
             int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->ticket_tail == local_ticket);
 
-	    if(ready != 0){
+	    /*if(ready != 0){
               d->ticket_tail++;
               return ready;
-            }
-
+	      }*/
+	    
+	    osp_spin_lock(&d->mutex);
 	    d->read_lock_num++;
+	    osp_spin_unlock(&d->mutex);
 	    filp->f_flags |= F_OSPRD_LOCKED;
-
+	    r = 0;
 	  }
 	  
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
@@ -309,11 +312,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    if(d->write_lock_num != 0 || d->read_lock_num != 0)
 	      r = -EBUSY;
 
-	    osp_spin_lock(&d->mutex);
+	    //osp_spin_lock(&d->mutex);
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
-            osp_spin_unlock(&d->mutex);
+            //osp_spin_unlock(&d->mutex);
+	    r = 0;
 	  }
 	  else{
 
@@ -322,12 +326,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 	    osp_spin_lock(&d->mutex);
 	    d->read_lock_num++;
-	    filp->f_flags |= F_OSPRD_LOCKED;
 	    osp_spin_unlock(&d->mutex);
+	    filp->f_flags |= F_OSPRD_LOCKED;
+	    r = 0;
 	  }
 
 
-	  //eprintk("Attempting to try acquire\n");
+	  //eprintk("Attempting tos try acquire\n");
 		//r = -ENOTTY;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
@@ -346,16 +351,18 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	  
 	  filp->f_flags &= ~F_OSPRD_LOCKED;
 	  
-	 
 	    d->write_lock_num = 0;
 	    d->pid = -1;
-	    d->read_lock_num = 0;
+	    d->read_lock_num--;
 	  
+	  osp_spin_lock(&d->mutex);  
+	  d->ticket_tail++;
+	  osp_spin_unlock(&d->mutex);
+
 	  wake_up_all(&d->blockq);
+	  r = 0;
+	} 
 
-
-	} else
-		r = -ENOTTY; /* unknown command */
 	return r;
 }
 
