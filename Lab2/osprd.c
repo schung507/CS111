@@ -65,6 +65,10 @@ typedef struct osprd_info {
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
 
+        int read_lock_num;
+        int write_lock_num;
+        int pid;
+ 
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -199,14 +203,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	// Set 'r' to the ioctl's return value: 0 on success, negative on error
 
 	if (cmd == OSPRDIOCACQUIRE) {
-
+	  
 		// EXERCISE: Lock the ramdisk.
 		//
 		// If *filp is open for writing (filp_writable), then attempt
 		// to write-lock the ramdisk; otherwise attempt to read-lock
-		// the ramdisk.
-		//
-                // This lock request must block using 'd->blockq' until:
+ 		// the ramdisk.
+	  
+     // This lock request must block using 'd->blockq' until:
 		// 1) no other process holds a write lock;
 		// 2) either the request is for a read lock, or no other process
 		//    holds a read lock; and
@@ -236,9 +240,42 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to acquire\n");
-		r = -ENOTTY;
+		//eprintk("Attempting to acquire\n");
+		//r = -ENOTTY;
 
+	  if(filp_writable){
+
+	    int local_ticket = d->ticket_head++;
+	  
+	    int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->read_lock_num == 0 && d->ticket_tail == local_ticket);
+
+	    if(ready != 0){
+	      d->ticket_tail++;
+	      return ready;
+	    }
+	    
+	    d->write_lock_num = 1;
+	    d->pid = getpid();
+	    filp->f_flags |= F_OSPRD_LOCKED;
+	    d->ticket_tail++;
+
+	  }
+	  else{
+
+	    int local_ticket = d->ticket_head++;
+
+            int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->read_lock_num == 0 && d->ticket_tail == local_ticket);
+
+	    if(ready != 0){
+              d->ticket_tail++;
+              return ready;
+            }
+
+	    d->read_lock_num++;
+	    filp->f_flags |= F_OSPRD_LOCKED;
+
+	  }
+	  
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
 		// EXERCISE: ATTEMPT to lock the ramdisk.
@@ -249,8 +286,31 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to try acquire\n");
-		r = -ENOTTY;
+	  if(filp_writable){
+	  
+	    if(write_lock_num != 0 || read_lock_num != 0)
+	      r = -EBUSY;
+
+	    osp_spin_lock(d->mutex);
+	    d->write_lock_num = 1;
+	    d->pid = getpid();
+	    filp->f_flags |= F_OSPRD_LOCKED;
+            osp_spin_unlock(d->mutex);
+	  }
+	  else{
+
+	    if(write_lock_num != 0)
+	      r = -EBUSY;
+
+	    osp_spin_lock(d->mutex);
+	    d->read_lock_num++;
+	    filp->f_flags |= F_OSPRD_LOCKED;
+	    osp_spin_unlock(d->mutex);
+	  }
+
+
+	  //eprintk("Attempting to try acquire\n");
+		//r = -ENOTTY;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
 
@@ -262,7 +322,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		r = -ENOTTY;
+		//r = -ENOTTY;
+
+
 
 	} else
 		r = -ENOTTY; /* unknown command */
