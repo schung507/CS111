@@ -269,6 +269,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
+	    d->ticket_tail++;
 	    osp_spin_unlock(&d->mutex);
 	    /*d->ticket_tail++;*/
 	    }
@@ -286,6 +287,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	      osp_spin_lock(&d->mutex);
 	      d->read_lock_num++;
 	      filp->f_flags |= F_OSPRD_LOCKED;
+	      d->ticket_tail++;
 	      osp_spin_unlock(&d->mutex);
 	    }
 	  }
@@ -350,8 +352,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	  else
 	    d->read_lock_num--;
 	  
-	  
-	  d->ticket_tail++;
 	  osp_spin_unlock(&d->mutex);
 
 	  wake_up_all(&d->blockq);
