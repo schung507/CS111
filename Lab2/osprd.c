@@ -177,7 +177,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 	       
 		  d->write_lock_num = 0;
-		  d->read_lock_num = 0;
+		  d->read_lock_num--;
 		  d->pid = -1;
 		 
 	        osp_spin_unlock(&d->mutex);
@@ -262,19 +262,20 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    d->ticket_head++;
 	    osp_spin_unlock(&d->mutex);
 
-	    int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->read_lock_num == 0 && d->ticket_tail == local_ticket);
+	    int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->read_lock_num == 0) && (d->ticket_tail == local_ticket));
 
 	    /*if(ready != 0){
 	      d->ticket_tail++;
 	      return ready;
 	      }*/
 	    
+	    if (ready == 0) { 
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
 	    /*d->ticket_tail++;*/
 	    r = 0;
-
+	    }
 	  }
 	  else{
 
@@ -283,18 +284,19 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    d->ticket_head++;
 	    osp_spin_unlock(&d->mutex);
 
-            int ready = wait_event_interruptible(d->blockq, d->write_lock_num == 0 && d->ticket_tail == local_ticket);
+            int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->ticket_tail == local_ticket));
 
 	    /*if(ready != 0){
               d->ticket_tail++;
               return ready;
 	      }*/
-	    
-	    osp_spin_lock(&d->mutex);
-	    d->read_lock_num++;
-	    osp_spin_unlock(&d->mutex);
-	    filp->f_flags |= F_OSPRD_LOCKED;
-	    r = 0;
+	    if (ready == 0) {
+	      osp_spin_lock(&d->mutex);
+	      d->read_lock_num++;
+	      osp_spin_unlock(&d->mutex);
+	      filp->f_flags |= F_OSPRD_LOCKED;
+	      r = 0;
+	    }
 	  }
 	  
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
@@ -348,14 +350,18 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//r = -ENOTTY;
 	  if(filp->f_flags & F_OSPRD_LOCKED == 0)
 	    r = -EINVAL;
-	  
+
+	  osp_spin_lock(&d->mutex);  
 	  filp->f_flags &= ~F_OSPRD_LOCKED;
 	  
+	  if (filp_writable) {
 	    d->write_lock_num = 0;
 	    d->pid = -1;
+	  }
+	  else
 	    d->read_lock_num--;
 	  
-	  osp_spin_lock(&d->mutex);  
+	  
 	  d->ticket_tail++;
 	  osp_spin_unlock(&d->mutex);
 
