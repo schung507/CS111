@@ -177,7 +177,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 	       
 		  d->write_lock_num = 0;
-		  d->read_lock_num--;
+		  d->read_lock_num = 0;
 		  d->pid = -1;
 		 
 	        osp_spin_unlock(&d->mutex);
@@ -263,18 +263,14 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    osp_spin_unlock(&d->mutex);
 
 	    int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->read_lock_num == 0) && (d->ticket_tail == local_ticket));
-
-	    /*if(ready != 0){
-	      d->ticket_tail++;
-	      return ready;
-	      }*/
 	    
-	    if (ready == 0) { 
+	    if (ready == 0) {
+	    osp_spin_lock(&d->mutex);
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
+	    osp_spin_unlock(&d->mutex);
 	    /*d->ticket_tail++;*/
-	    r = 0;
 	    }
 	  }
 	  else{
@@ -286,16 +282,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
             int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->ticket_tail == local_ticket));
 
-	    /*if(ready != 0){
-              d->ticket_tail++;
-              return ready;
-	      }*/
 	    if (ready == 0) {
 	      osp_spin_lock(&d->mutex);
 	      d->read_lock_num++;
-	      osp_spin_unlock(&d->mutex);
 	      filp->f_flags |= F_OSPRD_LOCKED;
-	      r = 0;
+	      osp_spin_unlock(&d->mutex);
 	    }
 	  }
 	  
@@ -314,23 +305,21 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    if(d->write_lock_num != 0 || d->read_lock_num != 0)
 	      r = -EBUSY;
 
-	    //osp_spin_lock(&d->mutex);
+	    osp_spin_lock(&d->mutex);
 	    d->write_lock_num = 1;
 	    d->pid = current->pid;
 	    filp->f_flags |= F_OSPRD_LOCKED;
-            //osp_spin_unlock(&d->mutex);
-	    r = 0;
+            osp_spin_unlock(&d->mutex);
 	  }
-	  else{
+	  else {
 
 	    if(d->write_lock_num != 0)
 	      r = -EBUSY;
 
 	    osp_spin_lock(&d->mutex);
 	    d->read_lock_num++;
-	    osp_spin_unlock(&d->mutex);
 	    filp->f_flags |= F_OSPRD_LOCKED;
-	    r = 0;
+	    osp_spin_unlock(&d->mutex);
 	  }
 
 
@@ -366,7 +355,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	  osp_spin_unlock(&d->mutex);
 
 	  wake_up_all(&d->blockq);
-	  r = 0;
 	} 
 
 	return r;
