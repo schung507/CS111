@@ -313,6 +313,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	      return -ERESTARTSYS;
 	    }
 
+	    
+	    if(d->write_pid == current->pid)
+	      return -EDEADLK;
+
 	    if (ready == 0) {
 	    osp_spin_lock(&d->mutex);
 	    d->write_lock_num = 1;
