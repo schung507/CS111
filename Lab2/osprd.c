@@ -73,7 +73,12 @@ typedef struct osprd_info {
           int process_number;
           struct dead_ticket *next;
         };
- 
+
+  struct read_pids {
+    int process_number;
+    struct read_pids *next;
+    struct read_pids *previous;
+  }
         struct dead_ticket *killed_process;
 	// The following elements are used internally; you don't need
 	// to understand them.
