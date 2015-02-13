@@ -74,12 +74,14 @@ typedef struct osprd_info {
           struct dead_ticket *next;
         };
 
-  struct read_pids {
-    int process_number;
-    struct read_pids *next;
-    struct read_pids *previous;
-  }
+        struct read_pids {
+          int process_id;
+          struct read_pids *next;
+          struct read_pids *previous;
+        };
+
         struct dead_ticket *killed_process;
+        struct read_pids *current_pid;
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -214,15 +216,15 @@ void dead_ticket_handler (osprd_info_t *d, int local_ticket) {
   ticket->process_number = local_ticket;
 
   /*if the list is empty*/
-  if (d->killed_process->next == NULL)
+  if (d->killed_process->next == NULL) {
     d->killed_process->next = ticket;
-
-  /*list has already started*/
-  while (cur->next != NULL) {
-    cur = cur->next;
   }
-  cur->next = ticket;
-
+  else {
+    while (cur->next != NULL) {
+      cur = cur->next;
+    }
+    cur->next = ticket;
+  }
 }
 
 int interrupt_condition(osprd_info_t *d, int local_ticket) {
@@ -239,6 +241,30 @@ int interrupt_condition(osprd_info_t *d, int local_ticket) {
   if (d->ticket_tail == local_ticket)
     return 1;
   return 0;
+}
+
+void add_processes(osprd_info_t *d, int pid) {
+  struct read_pids *cur = d->current_pid;
+  struct read_pids *before;
+
+  struct read_pids *new_pid = kmalloc(sizeof(struct read_pids), GFP_ATOMIC);
+  new_pid->process_id = pid;
+  new_pid->next = NULL;
+
+  /*if the list is empty*/
+  if (d->current_pid == NULL) {
+    d->current_pid->next = new_pid;
+    d->current_pid->previous = d->current_pid;
+  }
+  else {
+  /*list has already started*/
+    while (cur->next != NULL) {
+      before = cur;
+      cur = cur->next;
+    }
+    cur->next = new_pid;
+    cur->previous = before;
+  }
 }
 
 /*
@@ -319,8 +345,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    }
 
 	    
-	    if(d->write_pid == current->pid)
-	      return -EDEADLK;
+	    /* if(d->write_pid == current->pid)
+	       return -EDEADLK; */
 
 	    if (ready == 0) {
 	    osp_spin_lock(&d->mutex);
@@ -437,6 +463,10 @@ static void osprd_setup(osprd_info_t *d)
 	d->killed_process = kmalloc(sizeof(struct dead_ticket), GFP_ATOMIC);
 	d->killed_process->next = NULL;
 	d->killed_process->process_number = -1;
+	d->current_pid = kmalloc(sizeof(struct read_pids), GFP_ATOMIC);
+	d->current_pid->process_id = -1;
+	d->current_pid->next = NULL;
+	d->current_pid->previous = NULL;
 	
 	/* Add code here if you add fields to osprd_info_t. */
 }
