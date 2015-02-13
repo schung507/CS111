@@ -228,15 +228,17 @@ void dead_ticket_handler (osprd_info_t *d, int local_ticket) {
 }
 
 int interrupt_condition(osprd_info_t *d, int local_ticket) {
-  struct dead_ticket *cur = d->killed_process;
+  struct dead_ticket *cur;
+  cur = d->killed_process;
+
+  osp_spin_lock(&d->mutex);
   while (cur->next != NULL) {
     if (cur->process_number == local_ticket) {
-      osp_spin_lock(&d->mutex);
       d->ticket_tail++;
-      osp_spin_unlock(&d->mutex);
     }
     cur = cur->next;
-    }
+  }
+  osp_spin_unlock(&d->mutex);
 
   if (d->ticket_tail == local_ticket)
     return 1;
@@ -337,10 +339,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    osp_spin_unlock(&d->mutex);
 
 
-	    int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->read_lock_num == 0) && (interrupt_condition));
+	    int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (d->read_lock_num == 0) && (interrupt_condition(d, local_ticket)));
 	    
 	    if (ready == -ERESTARTSYS) {
+	      osp_spin_lock(&d->mutex);
 	      dead_ticket_handler(d, local_ticket);
+	      osp_spin_unlock(&d->mutex);
 	      return -ERESTARTSYS;
 	    }
 
@@ -364,10 +368,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	    d->ticket_head++;
 	    osp_spin_unlock(&d->mutex);
 
-            int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (interrupt_condition));
+            int ready = wait_event_interruptible(d->blockq, (d->write_lock_num == 0) && (interrupt_condition(d, local_ticket)));
 
 	    if (ready == -ERESTARTSYS) {
+	      osp_spin_lock(&d->mutex);
 	      dead_ticket_handler(d, local_ticket);
+	      osp_spin_unlock(&d->mutex);
 	      return -ERESTARTSYS;
 	    }
 
