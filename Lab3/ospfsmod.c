@@ -865,6 +865,9 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
+		//int success = copy_to_user(buffer, f_pos, count);
+		//if (success != 0)
+		//return -EFAULT;
 		retval = -EIO; // Replace these lines
 		goto done;
 
