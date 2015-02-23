@@ -9,14 +9,21 @@
 # the end of the file.
 
 # Partner 1
-Name: Your Name Here
-Student ID: Your ID Here
-Email: Your Email Here
+Name: Lynn Hao Tran	
+Student ID: 304-325-447
+Email: lynn.h.tran@gmail.com
 
 # Partner 2
-#Name: Partner's Name Here
-#Student ID: Partner's ID Here
-#Email: Partner's Email Here
+Name: Stella Chung
+Student ID: 004-277-565
+Email: schung507@gmail.com
 
 
 # Add any other information you'd like us to have below this line.
+Known problems with the code: Some of the tests that are reliant on timing do not 
+pass on the first trial because the processes are not coming out in the correct order.
+We assume this is because the CPU we are testing on is skewing the times for the sleeps
+and waits in certain tests in the test script because the CPU is so slow (e.g. QEMU takes 
+about 5 minutes to start). In addition, it seems that sometimes when the process is 
+interrupted it does not return -ERESTARTSYS or at least does not go into the if handler
+for those returns, thus causing the tests that check for interrupts to sometimes fail. 
