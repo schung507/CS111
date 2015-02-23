@@ -553,6 +553,9 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
+  /*For loop to go through blocks 2 thru ??? until find free block*/
+  /*bitvector_test(blockno, 32 (last bit)) - if it is 0, block is free*/
+  /*if free block, bitvector_set(blockno, 32), return block number*/
 	return 0;
 }
 
@@ -563,6 +566,8 @@ allocate_block(void)
 //   Inputs:  blockno -- the block number to be freed
 //   Returns: none
 //
+//   
+//
 //   This function should mark the named block as free in the free-block
 //   bitmap.  (You might want to program defensively and make sure the block
 //   number isn't obviously bogus: the boot sector, superblock, free-block
@@ -572,6 +577,8 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+        /*if (blockno != 1 && (bitvector_set(blockno, 32) != 0)) 
+	  bitvector_clear(blockno, 32);*/
 }
 
 
@@ -907,7 +914,10 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
-	/* EXERCISE: Your code here */
+	/* EXERCISE: Your code here 
+	   if (filp->f_flags != O_APPEND)
+	   do not write?
+	*/
 
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
