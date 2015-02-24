@@ -875,11 +875,23 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		//int success = copy_to_user(buffer, f_pos, count);
-		//if (success != 0)
-		//return -EFAULT;
-		retval = -EIO; // Replace these lines
-		goto done;
+
+		//how much available space in the block
+		uint32_t block_offset = *f_pos % OSPFS_BLKSIZE;
+		n = OSPFS_BLKSIZE - block_offset;
+
+		//how much more data needs to be copied
+		uint32_t remaining = count - amount;
+
+		if (remaining < n)
+		  n = remaining;
+		
+
+		//copy_to_user() third parameter (count) should be n
+		if (copy_to_user(buffer, data + f_pos, n) != 0) {
+		  retval = -EFAULT;
+		  goto done;
+		}
 
 		buffer += n;
 		amount += n;
