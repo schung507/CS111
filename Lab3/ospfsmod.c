@@ -554,7 +554,14 @@ allocate_block(void)
 {
 	/* EXERCISE: Your code here */
   void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
-  /*For loop to go through blocks 2 thru ??? until find free block*/
+  uint32_t blockno = 0;
+  for (blockno = 0; blockno != ospfs_super->os_nblocks; blockno++) {
+      if ((bitvector_test(bitmap, blockno)) == 0) {
+	bitvector_set(bitmap, blockno);
+	return blockno;
+      }
+  }
+  /*For loop to go through blocks 0 thru numblocks until find free block*/
   /*bitvector_test(bitmap, blockno) - if it is 0, block is free*/
   /*if free block, bitvector_set(blockno, 32), return block number*/
 	return 0;
@@ -580,8 +587,8 @@ free_block(uint32_t blockno)
 	/* EXERCISE: Your code here */
         void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
 
-        if (blockno != 1 && (bitvector_set(bitmap, blockno) != 0)) 
-	  bitvector_clear(data, blockno);
+        if (blockno != 0 && blockno != 1 && (bitvector_test(bitmap, blockno) != 0)) 
+	  bitvector_clear(bitmap, blockno);
 }
 
 
