@@ -1,7 +1,7 @@
 #include <linux/autoconf.h>
 #include <linux/version.h>
 #ifndef EXPORT_SYMTAB
-# define EXPORT_SYMTAB
+#define EXPORT_SYMTAB
 #endif
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -974,14 +974,16 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
-	/* EXERCISE: Your code here 
-	   if (filp->f_flags != O_APPEND)
-	   do not write?
-	*/
+	//EXERCISE: Your code here 
+	 if (filp->f_flags == O_APPEND)
+	     *f_pos = oi->oi_size;
+
 
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
+	 if(*f_pos + count > oi->oi_size)
+	   change_size(oi, *f_pos+ count);
 
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
@@ -1001,8 +1003,20 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		// read user space.
 		// Keep track of the number of bytes moved in 'n'.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+	       //how much available space in block
+		uint32_t block_offset = *f_pos % OSPFS_BLKSIZE;
+		n = OSPFS_BLKSIZE - block_offset;
+
+		//how much more data needs to be copied
+		uint32_T remaining = count - amount;
+
+		if (remaining < n)
+		  n = remaining;
+
+		if ( copy_from_user(data + f_pos, buffer, n) != 0){
+		  retval = -EIO; // Replace these lines
+		  goto done;
+		}
 
 		buffer += n;
 		amount += n;
@@ -1081,7 +1095,25 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	return ERR_PTR(-EINVAL); // Replace this line
+	 int f_pos;
+	int new_block;
+	//try to find empty entry
+	for(f_pos = 0; f_pos < dir_oi->io_size; f_pos += OSPFS_DIRENTRY_SIZE){
+	  ospfs_direnry_t *find_empty = ospfs_inode_data(dir_oi, f_pos);
+	  if (find_empty->od_ino == 0)
+	    return find_empty;
+	}
+
+	//else make new block
+	new_block = change_size(dir_oi, dir_oi->io->size + OSPFS_DIRENTRY_SIZE);
+	//if fail to make new block
+	if (new_block < 0)
+	  return ERR_PTR(r);
+	//clear all directory entries and return one?
+	ospfs_direntry_t *empty_entry = ospfs_inode_data(dir_oi, dir_oi->io->size - OSPFS_DIRENTRY_SIZE);
+	empty_entry->od_ino = 0;
+
+	return empty_entry; // Replace this line
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
