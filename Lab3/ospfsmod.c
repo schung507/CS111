@@ -1042,7 +1042,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 static ospfs_direntry_t *
 find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen)
 {
-	int off;
+int off;
 	if (namelen < 0)
 		namelen = strlen(name);
 	for (off = 0; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE) {
@@ -1148,7 +1148,27 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+        ospfs_inode_t *dir_t = ospfs_inode(dir->i_ino);
+
+	if( find_direntry(dir_t, dst_dentry->d_name.name, dst_dentry->d_name.len)!= NULL)
+	  return -EEXIST;
+
+	ospfs_direntry_t *new_entry = create_blank_direntry(dir_t);
+	if(IS_ERR(new_entry))
+	  return -ENOSPC;
+
+	ospfs_inode_t *temp_inode = ospfs_inode(src_dentry->d_inode->i_ino);
+	if(ospfs_inode(src_dentry->d_inode->i_ino) == 0)
+	  return -EIO;
+
+	temp_inode->oi_nlink++;
+
+	new_entry->od_ino = src_dentry->d_inode->i_ino;
+	memcpy(new_entry->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
+	//add nullbyte?
+	new_entry->od_name[dst_dentry->d_name.len]=0;
+       
+	return 0;
 }
 
 // ospfs_create
