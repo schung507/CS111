@@ -449,33 +449,56 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		ospfs_inode_t *entry_oi;
 
 		/* If at the end of the directory, set 'r' to 1 and exit
-		 * the loop.  For now we do this all the time.
+		 * the loop.  For now we do this all the time. <-- DONE
 		 *
 		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
-
+		if (f_pos - 2 >= (dir_oi->oi_size/OSPFS_DIRENTRY_SIZE)) {
+		  r = 1;		
+		  break;		
+		}
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
 		 * directory-file as a sequence of ospfs_direntry structures.
-		 * You will find 'f_pos' and 'ospfs_inode_data' useful.
+		 * You will find 'f_pos' and 'ospfs_inode_data' useful. <-- DONE
 		 *
 		 * Then use the fields of that file to fill in the directory
 		 * entry.  To figure out whether a file is a regular file or
 		 * another directory, use 'ospfs_inode' to get the directory
 		 * entry's corresponding inode, and check out its 'oi_ftype'
-		 * member.
+		 * member.  <-- DONE
 		 *
 		 * Make sure you ignore blank directory entries!  (Which have
-		 * an inode number of 0.)
+		 * an inode number of 0.) <-- DONE
 		 *
 		 * If the current entry is successfully read (the call to
 		 * filldir returns >= 0), or the current entry is skipped,
 		 * your function should advance f_pos by the proper amount to
-		 * advance to the next directory entry.
+		 * advance to the next directory entry. <-- DONE
 		 */
 
 		/* EXERCISE: Your code here */
+
+		od = ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);
+		
+		if (od->od_ino == 0) {
+		  f_pos++;
+		  continue;
+		}
+
+		uint32_t type_of_file = dir_oi->oi_ftype;
+
+		if (type_of_file != OSPFS_FTYPE_REG &&
+		    type_of_file != OSPFS_FTYPE_DIR &&
+		    type_of_file != OSPFS_FTYPE_SYMLINK) {
+		  r = 1;
+		  break;
+		}
+		else 
+		  ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, type_of_file);
+
+		if (ok_so_far >= 0)
+		  f_pos++;
+
 	}
 
 	// Save the file position and return!
@@ -898,7 +921,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		
 
 		//copy_to_user() third parameter (count) should be n
-		if (copy_to_user(buffer, data + f_pos, n) != 0) {
+		if (copy_to_user(buffer, data + *f_pos, n) != 0) {
 		  retval = -EFAULT;
 		  goto done;
 		}
