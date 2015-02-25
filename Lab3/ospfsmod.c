@@ -648,7 +648,9 @@ static int32_t
 indir2_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+  if (b >= (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+	return 0;
+  return -1;
 }
 
 
@@ -667,11 +669,16 @@ static int32_t
 indir_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+  if (b < OSPFS_NDIRECT)
+    return -1;
+  else if (b >= OSPFS_NDIRECT && b < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+    return 0;
+  else
+    return (b - (OSPFS_NDIRECT + OSPFS_NINDIRECT))/OSPFS_NINDIRECT;
 }
 
 
-// int32_t indir_index(uint32_t b)
+// int32_t direct_index(uint32_t b)
 //	Returns the indirect block index for file block b.
 //
 // Inputs:  b -- the zero-based index of the file block
@@ -684,7 +691,12 @@ static int32_t
 direct_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+  if (b < OSPFS_NDIRECT)
+    return b;
+  else if (b >= OSPFS_NDIRECT && b < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+    return (b - OSPFS_NDIRECT);
+  else
+    return (b - OSPFS_NDIRECT) % OSPFS_NINDIRECT;
 }
 
 
