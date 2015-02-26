@@ -1373,7 +1373,6 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 }
 
 
-
 // ospfs_follow_link(dentry, nd)
 //   Linux calls this function to follow a symbolic link.
 //   It is the ospfs_symlink_inode_ops.follow_link callback.
