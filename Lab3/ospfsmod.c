@@ -990,6 +990,8 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
 		uint32_t n;
 		char *data;
+		uint32_t block_offset;
+		uint32_t remaining;
 
 		if (blockno == 0) {
 			retval = -EIO;
@@ -1004,11 +1006,11 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		// Keep track of the number of bytes moved in 'n'.
 		/* EXERCISE: Your code here */
 	       //how much available space in block
-		uint32_t block_offset = *f_pos % OSPFS_BLKSIZE;
+		block_offset = *f_pos % OSPFS_BLKSIZE;
 		n = OSPFS_BLKSIZE - block_offset;
 
 		//how much more data needs to be copied
-		uint32_t remaining = count - amount;
+		remaining = count - amount;
 
 		if (remaining < n)
 		  n = remaining;
@@ -1097,6 +1099,8 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	/* EXERCISE: Your code here. */
 	uint32_t f_pos;
 	int new_block;
+	ospfs_direntry_t *empty_entry;
+
 	//try to find empty entry
 	for(f_pos = 0; f_pos < dir_oi->oi_size; f_pos += OSPFS_DIRENTRY_SIZE){
 	  ospfs_direntry_t *find_empty = ospfs_inode_data(dir_oi, f_pos);
@@ -1110,7 +1114,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	if (new_block < 0)
 	  return ERR_PTR(new_block);
 	//clear all directory entries and return one?
-	ospfs_direntry_t *empty_entry = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
+	empty_entry = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
 	empty_entry->od_ino = 0;
 
 	return empty_entry; // Replace this line
@@ -1149,15 +1153,17 @@ static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
         ospfs_inode_t *dir_t = ospfs_inode(dir->i_ino);
+        ospfs_direntry_t *new_entry;
+	ospfs_inode_t *temp_inode;
 
 	if( find_direntry(dir_t, dst_dentry->d_name.name, dst_dentry->d_name.len)!= NULL)
 	  return -EEXIST;
 
-	ospfs_direntry_t *new_entry = create_blank_direntry(dir_t);
+	new_entry = create_blank_direntry(dir_t);
 	if(IS_ERR(new_entry))
 	  return -PTR_ERR(new_entry);
 
-	ospfs_inode_t *temp_inode = ospfs_inode(src_dentry->d_inode->i_ino);
+	temp_inode = ospfs_inode(src_dentry->d_inode->i_ino);
 	if(temp_inode  == 0)
 	  return -EIO;
 
@@ -1210,7 +1216,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
 	/* EXERCISE: Your code here. */
-
+        ospfs_direntry_t *new_entry;
+	ospfs_inode_t *new_node;
 	//if name too long
 	if( dentry->d_name.len > OSPFS_MAXNAMELEN)
 	  return -ENAMETOOLONG;
@@ -1220,7 +1227,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	  return -EEXIST;
 
 	//find new direntry 
-	ospfs_direntry_t *new_entry = create_blank_direntry(dir_oi);
+	new_entry = create_blank_direntry(dir_oi);
 	if(IS_ERR(new_entry))
 	  return PTR_ERR(new_entry);
 
@@ -1250,7 +1257,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 	
 	//initialize everything
-	ospfs_inode_t *new_node = ospfs_inode(entry_ino);
+	new_node = ospfs_inode(entry_ino);
 	new_node->oi_size = 0;
 	new_node->oi_ftype = OSPFS_FTYPE_REG;
 	new_node->oi_nlink = 1;
@@ -1306,7 +1313,8 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
-
+	ospfs_symlink_inode_t *new_symlink;
+	ospfs_direntry_t *new_entry;
 	/* EXERCISE: Your code here. */
 		//if name too long
 	if( dentry->d_name.len > OSPFS_MAXSYMLINKLEN || strlen(symname)> OSPFS_MAXSYMLINKLEN)
@@ -1318,7 +1326,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 
 	
 	//find new direntry 
-	ospfs_direntry_t *new_entry = create_blank_direntry(dir_oi);
+	new_entry = create_blank_direntry(dir_oi);
 	if(IS_ERR(new_entry))
 	  return PTR_ERR(new_entry);
 
@@ -1348,11 +1356,11 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 
 
 	//initialize everything
-	ospfs_symlink_inode_t *new_symlink = (ospfs_symlink_inode_t*)ospfs_inode(entry_ino);
+	new_symlink = (ospfs_symlink_inode_t*)ospfs_inode(entry_ino);
 	
 	new_symlink->oi_size = strlen(symname);
 	new_symlink->oi_ftype = OSPFS_FTYPE_SYMLINK;
-	new_symlink->oi_nlink = 1;
+	new_symlink->oi_nlink++;
 	memcpy(new_symlink->oi_symlink, symname, strlen(symname));
 	eprintk("string length of symname is %d", strlen(symname));
 	eprintk("symnlink was %s\n", symname);
