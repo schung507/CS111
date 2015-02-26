@@ -1095,7 +1095,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	 int f_pos;
+	uint32_t f_pos;
 	int new_block;
 	//try to find empty entry
 	for(f_pos = 0; f_pos < dir_oi->oi_size; f_pos += OSPFS_DIRENTRY_SIZE){
@@ -1162,8 +1162,8 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	  return -EIO;
 
 	//ENOSPC error???
-	if( allocate_block() == 0 )
-	  return -ENOSPC;
+	//	if( allocate_block() == 0 )
+	//return -ENOSPC;
 
 	temp_inode->oi_nlink++;
 
@@ -1225,8 +1225,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	  return PTR_ERR(new_entry);
 
 	//ENOSPC error?
-	if( allocate_block() == 0)
-	  return -ENOSPC;
+	//if( allocate_block() == 0)
+	//return -ENOSPC;
 
 	//find empty inode
 	for(; entry_ino < ospfs_super->os_ninodes; entry_ino++){
@@ -1244,8 +1244,10 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	} 
 	
 	//if all inodes have links
-	if(entry_ino == ospfs_super->os_ninodes)
+	if(entry_ino == ospfs_super->os_ninodes){
+	  eprintk("created failed\n");
 	  return -ENOSPC;
+	}
 	
 	//initialize everything
 	ospfs_inode_t *new_node = ospfs_inode(entry_ino);
@@ -1255,7 +1257,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	new_node->oi_mode = mode;
 	//copy 0s for direct block pointers?
 	//???
-
+	memset(new_node->oi_direct, 0, sizeof(uint32_t)*OSPFS_NDIRECT);
 	new_node->oi_indirect = 0;
 	new_node->oi_indirect2 = 0;
 
@@ -1303,7 +1305,7 @@ static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
-	uint32_t entry_ino = 0;
+	uint32_t entry_ino = 2;
 
 	/* EXERCISE: Your code here. */
 		//if name too long
@@ -1321,13 +1323,14 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	  return PTR_ERR(new_entry);
 
 	//ENOSPC error?
-	if( allocate_block() == 0)
-	  return -ENOSPC;
+	//if( allocate_block() == 0)
+	//return -ENOSPC;
 
 	//find empty inode
 	for(; entry_ino < ospfs_super->os_ninodes; entry_ino++){
 	  //get pointer to inode
 	  ospfs_symlink_inode_t *temp_inode = (ospfs_symlink_inode_t*)ospfs_inode(entry_ino);
+	  
 	  if(temp_inode == 0)
 	    return -EIO;
 
@@ -1351,12 +1354,15 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	new_symlink->oi_ftype = OSPFS_FTYPE_SYMLINK;
 	new_symlink->oi_nlink = 1;
 	memcpy(new_symlink->oi_symlink, symname, strlen(symname));
+	eprintk("string length of symname is %d", strlen(symname));
+	eprintk("symnlink was %s\n", symname);
 	new_symlink->oi_symlink[strlen(symname)] = 0;
 
 	new_entry->od_ino = entry_ino;
+	eprintk("link name is %s", dentry->d_name.name);
 	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
-	new_symlink->oi_symlink[dentry->d_name.len] = 0;
-
+	new_entry->od_name[dentry->d_name.len] = 0;
+       
 
 	//conditional symlinks?
 
@@ -1408,9 +1414,11 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 	  }
 	}
-	else
+	else{
+	  eprintk("in follow link\n");
 	  nd_set_link(nd, oi->oi_symlink);
-	return (void *) 0;
+	}
+        return (void *) 0;
 }
 
 
