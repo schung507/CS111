@@ -1008,12 +1008,12 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		n = OSPFS_BLKSIZE - block_offset;
 
 		//how much more data needs to be copied
-		uint32_T remaining = count - amount;
+		uint32_t remaining = count - amount;
 
 		if (remaining < n)
 		  n = remaining;
 
-		if ( copy_from_user(data + f_pos, buffer, n) != 0){
+		if ( copy_from_user(data + *f_pos, buffer, n) != 0){
 		  retval = -EIO; // Replace these lines
 		  goto done;
 		}
@@ -1098,19 +1098,19 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	 int f_pos;
 	int new_block;
 	//try to find empty entry
-	for(f_pos = 0; f_pos < dir_oi->io_size; f_pos += OSPFS_DIRENTRY_SIZE){
-	  ospfs_direnry_t *find_empty = ospfs_inode_data(dir_oi, f_pos);
+	for(f_pos = 0; f_pos < dir_oi->oi_size; f_pos += OSPFS_DIRENTRY_SIZE){
+	  ospfs_direntry_t *find_empty = ospfs_inode_data(dir_oi, f_pos);
 	  if (find_empty->od_ino == 0)
 	    return find_empty;
 	}
 
 	//else make new block
-	new_block = change_size(dir_oi, dir_oi->io->size + OSPFS_DIRENTRY_SIZE);
+	new_block = change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE);
 	//if fail to make new block
 	if (new_block < 0)
-	  return ERR_PTR(r);
+	  return ERR_PTR(new_block);
 	//clear all directory entries and return one?
-	ospfs_direntry_t *empty_entry = ospfs_inode_data(dir_oi, dir_oi->io->size - OSPFS_DIRENTRY_SIZE);
+	ospfs_direntry_t *empty_entry = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
 	empty_entry->od_ino = 0;
 
 	return empty_entry; // Replace this line
@@ -1155,11 +1155,15 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	ospfs_direntry_t *new_entry = create_blank_direntry(dir_t);
 	if(IS_ERR(new_entry))
-	  return -ENOSPC;
+	  return -PTR_ERR(new_entry);
 
 	ospfs_inode_t *temp_inode = ospfs_inode(src_dentry->d_inode->i_ino);
-	if(ospfs_inode(src_dentry->d_inode->i_ino) == 0)
+	if(temp_inode  == 0)
 	  return -EIO;
+
+	//ENOSPC error???
+	if( allocate_block() == 0 )
+	  return -ENOSPC;
 
 	temp_inode->oi_nlink++;
 
@@ -1220,6 +1224,10 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	ospfs_direntry_t *new_entry = create_blank_direntry(dir_oi);
 	if(IS_ERR(new_entry))
 	  return PTR_ERR(new_entry);
+
+	//ENOSPC error?
+	if( allocate_block() == 0)
+	  return -ENOSPC;
 
 	//find empty inode
 	for(; entry_ino < ospfs_super->os_ninodes; entry_ino++){
