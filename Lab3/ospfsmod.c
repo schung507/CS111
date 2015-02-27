@@ -760,6 +760,7 @@ add_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_NDIRECT + OSPFS_NINDIRECT) {
 
+	  eprintk("We're allocating indirect blocks!\n");
 	  if (oi->oi_indirect == 0) {
 	    oi->oi_indirect = allocate_block();
 	    
@@ -787,6 +788,7 @@ add_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_MAXFILEBLKS) {
 
+	  eprintk("We're allocating indirect blocks in the doubly indirect block!\n");
 	  if (oi->oi_indirect2 == 0) {
 	    oi->oi_indirect2 = allocate_block();
 	    
@@ -917,14 +919,18 @@ remove_block(ospfs_inode_t *oi)
 	  return -EIO;
 	else if (n < OSPFS_NDIRECT) {
 
+	  eprintk("We're removing direct blocks!\n");
 	  free_block(oi->oi_direct[n-1]);
 	  oi->oi_direct[n-1] = 0;
 	  oi->oi_size -= OSPFS_BLKSIZE;
 	}
 	else if (n == OSPFS_NDIRECT + 1) {
-
-	  if (oi->oi_indirect == 0)
+	  
+	  eprintk("We're removing the indirect block and its first entry!\n");
+	  if (oi->oi_indirect == 0) {
+	    eprintk("The indirect block didn't exist!\n");
 	    return -EIO;
+	  }
 
 	  indirblock = ospfs_block(oi->oi_indirect);
 	  free_block(indirblock[direct_index(n-1)]);   //should be index 0
@@ -935,6 +941,7 @@ remove_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_NDIRECT + OSPFS_NINDIRECT) {
 	  
+	  eprintk("We're removing an entry in the indirect block!\n");
 	  if (oi->oi_indirect == 0)
 	    return -EIO;
 
@@ -945,13 +952,19 @@ remove_block(ospfs_inode_t *oi)
 	}
 	else if (n == OSPFS_NDIRECT + OSPFS_NINDIRECT + 1) { //one into indirect2block
 
-	  if (oi->oi_indirect2 == 0)
+	  eprintk("We're removing doubly indirect block!\n");
+
+	  if (oi->oi_indirect2 == 0) {
+	    eprintk("Doubly indirect block didn't exist!\n");
 	    return -EIO;
+	  }
 
 	  indir2block = ospfs_block(oi->oi_indirect2);
 
-	  if (indir2block[indir_index(n-1)] == 0)
+	  if (indir2block[indir_index(n-1)] == 0) {
+	    eprintk("Indirect in doubly indirect didn't exist!\n");
 	    return -EIO;
+	  }
 
 	  indirblock = ospfs_block(indir2block[indir_index(n-1)]);
 	  free_block(indirblock[direct_index(n-1)]);
@@ -964,8 +977,11 @@ remove_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_MAXFILEBLKS) {
 	 
-	  if (oi->oi_indirect2 == 0)
+	  eprintk("We're removing direct blcoks in doubly indirect block!\n");
+	  if (oi->oi_indirect2 == 0) {
+	    eprintk("Indir2block doesn't exist!\n");
 	    return -EIO;
+	  }
 
 	  indir2block = ospfs_block(oi->oi_indirect2);
 
