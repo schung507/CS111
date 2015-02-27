@@ -138,7 +138,6 @@ ospfs_size2nblocks(uint32_t size)
 	return (size + OSPFS_BLKSIZE - 1) / OSPFS_BLKSIZE;
 }
 
-
 // ospfs_block(blockno)
 //	Use this function to load a block's contents from "disk".
 //
@@ -971,7 +970,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
-
+	int write;
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
 	//EXERCISE: Your code here 
@@ -979,6 +978,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	     *f_pos = oi->oi_size;
 
 
+	 eprintk("*f_pos is %d", *f_pos);
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
@@ -993,10 +993,11 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		uint32_t block_offset;
 		uint32_t remaining;
 
-		if (blockno == 0) {
+		/*	if (blockno == 0) {
+		  eprintk("no blocks availabe\n");		  
 			retval = -EIO;
 			goto done;
-		}
+			}*/
 
 		data = ospfs_block(blockno);
 
@@ -1015,8 +1016,11 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if (remaining < n)
 		  n = remaining;
 
-		if ( copy_from_user(data + *f_pos, buffer, n) != 0){
-		  retval = -EIO; // Replace these lines
+		int write = copy_from_user(data + block_offset, buffer, n);
+		
+		if(write != 0){
+		  eprintk("cant write\n");
+		  retval = -EFAULT;
 		  goto done;
 		}
 
