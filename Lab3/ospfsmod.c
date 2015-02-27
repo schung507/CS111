@@ -745,6 +745,8 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *indirblock;
 	uint32_t *indir2block;
 
+	eprintk("HELLO");
+
 	if (n < 0)
 	  return -EIO;
 	else if (n < OSPFS_NDIRECT) {
@@ -783,7 +785,7 @@ add_block(ospfs_inode_t *oi)
 	  indirblock[direct_index(n)] = datablockno;
 	  oi->oi_size += OSPFS_BLKSIZE;
 	}
-	else if ((indir2_index(n)) == 0) {
+	else if (n < OSPFS_MAXFILEBLKS) {
 
 	  if (oi->oi_indirect2 == 0) {
 	    oi->oi_indirect2 = allocate_block();
@@ -908,6 +910,8 @@ remove_block(ospfs_inode_t *oi)
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 	uint32_t *indirblock;
 	uint32_t *indir2block;
+
+	eprintk("%d\n", n);
 
 	if (n <= 0)
 	  return -EIO;
@@ -1039,7 +1043,13 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 	  r = add_block(oi);
-	  if (r != 0) {
+	  if (r == -ENOSPC) {
+	    eprintk("Change size went wrong: adding blocks\n");
+	    oi->oi_size = old_size;
+	    return r;
+	  }
+	  if (r == -EIO) {
+	    eprintk("Change size went wrong: adding blocks i/o \n");
 	    oi->oi_size = old_size;
 	    return r;
 	  }
@@ -1047,7 +1057,9 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 	  r = remove_block(oi);
+
 	  if (r != 0) {
+	    eprintk("Change size went wrong: removing blocks\n");
 	    oi->oi_size = old_size;
 	    return r;
 	  }
@@ -1133,6 +1145,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		char *data;
 		uint32_t offset;
 		uint32_t remaining;
+		uint32_t reading;
 
 		// ospfs_inode_blockno returns 0 on error
 		if (blockno == 0) {
@@ -1161,7 +1174,9 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 
 		//copy_to_user() third parameter (count) should be n
 		
-		if ((copy_to_user(buffer, data + offset, n)) < 0) {
+		reading = copy_to_user(buffer, data + offset, n);
+
+		if (reading < 0) {
 		  retval = -EFAULT;
 		  goto done;
 		}
@@ -1212,7 +1227,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
 	 if(*f_pos + count > oi->oi_size)
-	   change_size(oi, *f_pos+ count);
+	   change_size(oi, *f_pos + count);
 
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
@@ -1221,11 +1236,12 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		char *data;
 		uint32_t block_offset;
 		uint32_t remaining;
+		uint32_t write;
 
 		if (blockno == 0) {
 		  eprintk("no blocks availabe\n");		  
-			retval = -EIO;
-			goto done;
+		  retval = -EIO;
+		  goto done;
 		}
 
 		data = ospfs_block(blockno);
@@ -1245,7 +1261,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if (remaining < n)
 		  n = remaining;
 
-		int write = copy_from_user(data + block_offset, buffer, n);
+		write = copy_from_user(data + block_offset, buffer, n);
 		
 		if(write < 0){
 		  eprintk("cant write\n");
