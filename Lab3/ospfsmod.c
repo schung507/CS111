@@ -1161,7 +1161,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 
 		//copy_to_user() third parameter (count) should be n
 		
-		if (copy_to_user(buffer, data + offset, n) < 0) {
+		if ((copy_to_user(buffer, data + offset, n)) < 0) {
 		  retval = -EFAULT;
 		  goto done;
 		}
@@ -1222,11 +1222,11 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		uint32_t block_offset;
 		uint32_t remaining;
 
-		/*	if (blockno == 0) {
+		if (blockno == 0) {
 		  eprintk("no blocks availabe\n");		  
 			retval = -EIO;
 			goto done;
-			}*/
+		}
 
 		data = ospfs_block(blockno);
 
@@ -1247,7 +1247,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 
 		int write = copy_from_user(data + block_offset, buffer, n);
 		
-		if(write != 0){
+		if(write < 0){
 		  eprintk("cant write\n");
 		  retval = -EFAULT;
 		  goto done;
