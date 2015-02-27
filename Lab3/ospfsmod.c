@@ -611,7 +611,9 @@ free_block(uint32_t blockno)
 	/* EXERCISE: Your code here */
         void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
 
-        if (blockno != 0 && blockno != 1 && (bitvector_test(bitmap, blockno) == 0)) 
+        if (blockno != 0 && 
+	    blockno != 1 && 
+	    (bitvector_test(bitmap, blockno) == 0)) 
 	  bitvector_set(bitmap, blockno);
 }
 
@@ -748,7 +750,6 @@ add_block(ospfs_inode_t *oi)
 	if (n < 0)
 	  return -EIO;
 	else if (n < OSPFS_NDIRECT) {
-	  eprintk("We're allocating direct blocks!\n");
 	  datablockno = allocate_block();
 	  eprintk("%d\n", datablockno);
 
@@ -760,7 +761,6 @@ add_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_NDIRECT + OSPFS_NINDIRECT) {
 
-	  eprintk("We're allocating indirect blocks!\n");
 	  if (oi->oi_indirect == 0) {
 	    oi->oi_indirect = allocate_block();
 	    
@@ -788,7 +788,6 @@ add_block(ospfs_inode_t *oi)
 	}
 	else if (n < OSPFS_MAXFILEBLKS) {
 
-	  eprintk("We're allocating indirect blocks in the doubly indirect block!\n");
 	  if (oi->oi_indirect2 == 0) {
 	    oi->oi_indirect2 = allocate_block();
 	    
@@ -913,22 +912,17 @@ remove_block(ospfs_inode_t *oi)
 	uint32_t *indirblock;
 	uint32_t *indir2block;
 
-	eprintk("%d\n", n);
-
 	if (n <= 0)
 	  return -EIO;
-	else if (n < OSPFS_NDIRECT) {
+	else if (n <= OSPFS_NDIRECT) {
 
-	  eprintk("We're removing direct blocks!\n");
 	  free_block(oi->oi_direct[n-1]);
 	  oi->oi_direct[n-1] = 0;
 	  oi->oi_size -= OSPFS_BLKSIZE;
 	}
 	else if (n == OSPFS_NDIRECT + 1) {
 	  
-	  eprintk("We're removing the indirect block and its first entry!\n");
 	  if (oi->oi_indirect == 0) {
-	    eprintk("The indirect block didn't exist!\n");
 	    return -EIO;
 	  }
 
@@ -939,9 +933,8 @@ remove_block(ospfs_inode_t *oi)
 	  oi->oi_indirect = 0;
 	  oi->oi_size -= OSPFS_BLKSIZE;
 	}
-	else if (n < OSPFS_NDIRECT + OSPFS_NINDIRECT) {
+	else if (n <= OSPFS_NDIRECT + OSPFS_NINDIRECT) {
 	  
-	  eprintk("We're removing an entry in the indirect block!\n");
 	  if (oi->oi_indirect == 0)
 	    return -EIO;
 
@@ -952,17 +945,13 @@ remove_block(ospfs_inode_t *oi)
 	}
 	else if (n == OSPFS_NDIRECT + OSPFS_NINDIRECT + 1) { //one into indirect2block
 
-	  eprintk("We're removing doubly indirect block!\n");
-
 	  if (oi->oi_indirect2 == 0) {
-	    eprintk("Doubly indirect block didn't exist!\n");
 	    return -EIO;
 	  }
 
 	  indir2block = ospfs_block(oi->oi_indirect2);
 
 	  if (indir2block[indir_index(n-1)] == 0) {
-	    eprintk("Indirect in doubly indirect didn't exist!\n");
 	    return -EIO;
 	  }
 
@@ -975,11 +964,9 @@ remove_block(ospfs_inode_t *oi)
 	  oi->oi_indirect2 = 0;
 	  oi->oi_size -= OSPFS_BLKSIZE;
 	}
-	else if (n < OSPFS_MAXFILEBLKS) {
+	else if (n <= OSPFS_MAXFILEBLKS) {
 	 
-	  eprintk("We're removing direct blcoks in doubly indirect block!\n");
 	  if (oi->oi_indirect2 == 0) {
-	    eprintk("Indir2block doesn't exist!\n");
 	    return -EIO;
 	  }
 
@@ -1056,16 +1043,13 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	uint32_t old_size = oi->oi_size;
 	int r = 0;
 
+	if (old_size == new_size)
+	  return 0;
+
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 	  r = add_block(oi);
-	  if (r == -ENOSPC) {
-	    eprintk("Change size went wrong: adding blocks\n");
-	    oi->oi_size = old_size;
-	    return r;
-	  }
-	  if (r == -EIO) {
-	    eprintk("Change size went wrong: adding blocks i/o \n");
+	  if (r == -ENOSPC || r == -EIO) {
 	    oi->oi_size = old_size;
 	    return r;
 	  }
@@ -1074,8 +1058,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	        /* EXERCISE: Your code here */
 	  r = remove_block(oi);
 
-	  if (r != 0) {
-	    eprintk("Change size went wrong: removing blocks\n");
+	  if (r == -ENOSPC || r == -EIO) {
 	    oi->oi_size = old_size;
 	    return r;
 	  }
@@ -1234,11 +1217,9 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
 	//EXERCISE: Your code here 
-	 if (filp->f_flags == O_APPEND)
+	 if (filp->f_flags & O_APPEND)
 	     *f_pos = oi->oi_size;
 
-
-	 eprintk("*f_pos is %d\n", *f_pos);
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
@@ -1254,8 +1235,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		uint32_t remaining;
 		uint32_t writing;
 
-		if (blockno == 0) {
-		  eprintk("no blocks availabe\n");		  
+		if (blockno == 0) {		  
 		  retval = -EIO;
 		  goto done;
 		}
@@ -1280,7 +1260,6 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		writing = copy_from_user(data + block_offset, buffer, n);
 		
 		if(writing < 0){
-		  eprintk("cant write\n");
 		  retval = -EFAULT;
 		  goto done;
 		}
