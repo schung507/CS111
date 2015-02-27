@@ -580,8 +580,8 @@ allocate_block(void)
   void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
   uint32_t blockno = 0;
   for (blockno = 0; blockno != ospfs_super->os_nblocks; blockno++) {
-      if ((bitvector_test(bitmap, blockno)) == 0) {
-	bitvector_set(bitmap, blockno);
+      if ((bitvector_test(bitmap, blockno)) == 1) {
+	bitvector_clear(bitmap, blockno);
 	return blockno;
       }
   }
@@ -611,8 +611,8 @@ free_block(uint32_t blockno)
 	/* EXERCISE: Your code here */
         void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
 
-        if (blockno != 0 && blockno != 1 && (bitvector_test(bitmap, blockno) != 0)) 
-	  bitvector_clear(bitmap, blockno);
+        if (blockno != 0 && blockno != 1 && (bitvector_test(bitmap, blockno) == 0)) 
+	  bitvector_set(bitmap, blockno);
 }
 
 
@@ -745,12 +745,12 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *indirblock;
 	uint32_t *indir2block;
 
-	eprintk("HELLO");
-
 	if (n < 0)
 	  return -EIO;
 	else if (n < OSPFS_NDIRECT) {
+	  eprintk("We're allocating direct blocks!\n");
 	  datablockno = allocate_block();
+	  eprintk("%d\n", datablockno);
 
 	  if (datablockno == 0)
 	    return -ENOSPC;
@@ -1222,7 +1222,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	     *f_pos = oi->oi_size;
 
 
-	 eprintk("*f_pos is %d", *f_pos);
+	 eprintk("*f_pos is %d\n", *f_pos);
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
 	/* EXERCISE: Your code here */
@@ -1236,7 +1236,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		char *data;
 		uint32_t block_offset;
 		uint32_t remaining;
-		uint32_t write;
+		uint32_t writing;
 
 		if (blockno == 0) {
 		  eprintk("no blocks availabe\n");		  
@@ -1261,9 +1261,9 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if (remaining < n)
 		  n = remaining;
 
-		write = copy_from_user(data + block_offset, buffer, n);
+		writing = copy_from_user(data + block_offset, buffer, n);
 		
-		if(write < 0){
+		if(writing < 0){
 		  eprintk("cant write\n");
 		  retval = -EFAULT;
 		  goto done;
