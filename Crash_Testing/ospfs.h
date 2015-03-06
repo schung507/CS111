@@ -1,6 +1,12 @@
 #ifndef OSPFS_H
 #define OSPFS_H
 // OSPFS Constants and Structure Definitions
+/*****************************************************************************
+ * CRASH TESTING
+ *****************************************************************************/
+#include <linux/ioctl.h>
+#define IOC_MAGIC 'k' //magic number
+#define IOCTL_CRASH _IO(IOC_MAGIC, 0) //icotl call
 
 /*****************************************************************************
  * BLOCKS

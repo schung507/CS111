@@ -43,7 +43,7 @@ static ospfs_super_t * const ospfs_super =
 static int change_size(ospfs_inode_t *oi, uint32_t want_size);
 static ospfs_direntry_t *find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen);
 
-
+int nwrites_to_crash = -1;
 /*****************************************************************************
  * FILE SYSTEM OPERATIONS STRUCTURES
  *
@@ -581,6 +581,17 @@ allocate_block(void)
   uint32_t blockno = 0;
   for (blockno = 0; blockno != ospfs_super->os_nblocks; blockno++) {
       if ((bitvector_test(bitmap, blockno)) == 1) {
+
+	if(nwrites_to_crash != -1){
+	  if(nwrites_to_crash < -1)
+	    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+	  else if(nwrites_to_crash == 0)
+	    return 0;
+	  else
+	    nwrites_to_crash--;
+	}
+
+
 	bitvector_clear(bitmap, blockno);
 	return blockno;
       }
@@ -613,8 +624,20 @@ free_block(uint32_t blockno)
 
         if (blockno != 0 && 
 	    blockno != 1 && 
-	    (bitvector_test(bitmap, blockno) == 0)) 
+	    (bitvector_test(bitmap, blockno) == 0)){ 
+	  
+	  if(nwrites_to_crash != -1){
+	    if(nwrites_to_crash < -1)
+	      eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+	    else if(nwrites_to_crash == 0)
+	      return;
+	    else
+	      nwrites_to_crash--;
+	  }
+
+
 	  bitvector_set(bitmap, blockno);
+	}
 }
 
 
@@ -1042,6 +1065,15 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
 	int r = 0;
+	
+	if(nwrites_to_crash != -1){
+          if(nwrites_to_crash < -1)
+            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+          else if(nwrites_to_crash == 0)
+            return 0;
+          else
+            nwrites_to_crash--;
+	}
 
 	if (old_size == new_size)
 	  return 0;
@@ -1257,6 +1289,16 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if (remaining < n)
 		  n = remaining;
 
+		if(nwrites_to_crash != -1){
+		  if(nwrites_to_crash < -1)
+		    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+		  else if(nwrites_to_crash == 0)
+		    return 0;
+		  else
+		    nwrites_to_crash--;
+		}
+
+
 		writing = copy_from_user(data + block_offset, buffer, n);
 		
 		if(writing < 0){
@@ -1352,6 +1394,15 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	    return find_empty;
 	}
 
+	if(nwrites_to_crash != -1){
+          if(nwrites_to_crash < -1)
+            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+          else if(nwrites_to_crash == 0)
+            return 0;
+          else
+            nwrites_to_crash--;
+	}
+
 	//else make new block
 	new_block = change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE);
 	//if fail to make new block
@@ -1414,6 +1465,16 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	//ENOSPC error???
 	//	if( allocate_block() == 0 )
 	//return -ENOSPC;
+
+	if(nwrites_to_crash != -1){
+          if(nwrites_to_crash < -1)
+            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+          else if(nwrites_to_crash == 0)
+            return 0;
+          else
+            nwrites_to_crash--;
+	}
+
 
 	temp_inode->oi_nlink++;
 
@@ -1499,7 +1560,16 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	  // eprintk("created failed\n");
 	  return -ENOSPC;
 	}
-	
+
+	if(nwrites_to_crash != -1){
+          if(nwrites_to_crash < -1)
+            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+          else if(nwrites_to_crash == 0)
+            return 0;
+          else
+            nwrites_to_crash--;
+	}
+
 	//initialize everything
 	new_node = ospfs_inode(entry_ino);
 	new_node->oi_size = 0;
@@ -1598,6 +1668,14 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	if(entry_ino == ospfs_super->os_ninodes)
 	  return -ENOSPC;
 
+	if(nwrites_to_crash != -1){
+          if(nwrites_to_crash < -1)
+            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+          else if(nwrites_to_crash == 0)
+            return 0;
+          else
+            nwrites_to_crash--;
+	}
 
 	//initialize everything
 	new_symlink = (ospfs_symlink_inode_t*)ospfs_inode(entry_ino);
@@ -1681,6 +1759,17 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
         return (void *) 0;
 }
 
+int ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg){
+
+  switch(cmd){
+  case IOCTL_CRASH:
+    nwrites_to_crash = arg;
+    break;
+  default:
+    return -ENOTTY;
+  }
+  return 0;
+}
 
 // Define the file system operations structures mentioned above.
 
@@ -1698,7 +1787,8 @@ static struct inode_operations ospfs_reg_inode_ops = {
 static struct file_operations ospfs_reg_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= ospfs_read,
-	.write		= ospfs_write
+	.write		= ospfs_write,
+	.ioctl          = ospfs_ioctl
 };
 
 static struct inode_operations ospfs_dir_inode_ops = {
