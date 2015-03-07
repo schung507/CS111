@@ -526,10 +526,14 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 static int
 ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 {
-  if (nwrites_to_crash == 0)
+  if (nwrites_to_crash == 0) {
+    eprintk("Program crash!");
     return 0;
-  if (nwrites_to_crash > 0)
+  }
+  if (nwrites_to_crash > 0) {
+    eprintk("Decrementing in unlink");
     nwrites_to_crash--;
+  }
 
 	ospfs_inode_t *oi = ospfs_inode(dentry->d_inode->i_ino);
 	ospfs_inode_t *dir_oi = ospfs_inode(dentry->d_parent->d_inode->i_ino);
@@ -1222,10 +1226,14 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	int retval = 0;
 	size_t amount = 0;
 
-	  if (nwrites_to_crash == 0)
-	    return 1;
-	  if (nwrites_to_crash > 0)
-	    nwrites_to_crash--;
+	if (nwrites_to_crash == 0) {
+	  eprintk("We crashed in write!\n");
+	    return count;
+	}
+	if (nwrites_to_crash > 0) {
+	  eprintk("Decrement in write!\n");
+	  nwrites_to_crash--;
+	}
 
 	//int write;
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
@@ -1361,12 +1369,6 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	int new_block;
 	ospfs_direntry_t *empty_entry;
 
-	if (nwrites_to_crash == 0) {
-	  return 0;
-	}
-	else if (nwrites_to_crash > 0) 
-	  nwrites_to_crash--;
-
 	//try to find empty entry
 	for(f_pos = 0; f_pos < dir_oi->oi_size; f_pos += OSPFS_DIRENTRY_SIZE){
 	  ospfs_direntry_t *find_empty = ospfs_inode_data(dir_oi, f_pos);
@@ -1501,11 +1503,14 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *new_node;
 
-	if (nwrites_to_crash == 0) {
+	  if (nwrites_to_crash == 0) {
+	    eprintk("Crashed creating files!\n");
 	  return 0;
 	}
-	else if (nwrites_to_crash > 0)
-	  nwrites_to_crash--;
+	  else if (nwrites_to_crash > 0) {
+	    eprintk("Decrement in creat!\n");
+	nwrites_to_crash--;
+	  }
 
 	//if name too long
 	if( dentry->d_name.len > OSPFS_MAXNAMELEN)
@@ -1607,12 +1612,14 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	ospfs_symlink_inode_t *new_symlink;
 	ospfs_direntry_t *new_entry;
 
-	if (nwrites_to_crash == 0) {
+	  if (nwrites_to_crash == 0) {
+	    eprintk("Crashed in symlink\n");
 	  return 0;
 	}
-	else if (nwrites_to_crash > 0)
-	  nwrites_to_crash--;
-
+	  else if (nwrites_to_crash > 0) {
+	    eprintk("Decrement in symlink");
+	nwrites_to_crash--;
+	  }
 
 	/* EXERCISE: Your code here. */
 		//if name too long
