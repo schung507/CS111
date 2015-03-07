@@ -1218,15 +1218,15 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
 {
-
-  if (nwrites_to_crash == 0)
-    return 0;
-  else if (nwrites_to_crash > 0)
-    nwrites_to_crash--;
-
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
+
+	  if (nwrites_to_crash == 0)
+	    return 1;
+	  if (nwrites_to_crash > 0)
+	    nwrites_to_crash--;
+
 	//int write;
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
@@ -1354,16 +1354,18 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    Use ERR_PTR if this fails; otherwise, clear out all the directory
 	//    entries and return one of them.
 
-  if (nwrites_to_crash == 0) {
-    return 0;
-  }
-  else if (nwrites_to_crash > 0) 
-    nwrites_to_crash--;
+  
 
 	/* EXERCISE: Your code here. */
 	uint32_t f_pos;
 	int new_block;
 	ospfs_direntry_t *empty_entry;
+
+	if (nwrites_to_crash == 0) {
+	  return 0;
+	}
+	else if (nwrites_to_crash > 0) 
+	  nwrites_to_crash--;
 
 	//try to find empty entry
 	for(f_pos = 0; f_pos < dir_oi->oi_size; f_pos += OSPFS_DIRENTRY_SIZE){
@@ -1419,16 +1421,18 @@ static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
 
-  if (nwrites_to_crash == 0) {
-    return 0;
-  }
-  else if (nwrites_to_crash > 0)
-    nwrites_to_crash--;
-
-
+  
         ospfs_inode_t *dir_t = ospfs_inode(dir->i_ino);
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *temp_inode;
+
+	if (nwrites_to_crash == 0) {
+	  return 0;
+	}
+	else if (nwrites_to_crash > 0)
+	  nwrites_to_crash--;
+
+
 
 	if( find_direntry(dir_t, dst_dentry->d_name.name, dst_dentry->d_name.len)!= NULL)
 	  return -EEXIST;
@@ -1488,18 +1492,19 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
-  if (nwrites_to_crash == 0) {
-    return 0;
-  }
-  else if (nwrites_to_crash > 0)
-    nwrites_to_crash--;
-
-
+  
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
 	/* EXERCISE: Your code here. */
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *new_node;
+
+	if (nwrites_to_crash == 0) {
+	  return 0;
+	}
+	else if (nwrites_to_crash > 0)
+	  nwrites_to_crash--;
+
 	//if name too long
 	if( dentry->d_name.len > OSPFS_MAXNAMELEN)
 	  return -ENAMETOOLONG;
@@ -1594,17 +1599,19 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
-  if (nwrites_to_crash == 0) {
-    return 0;
-  }
-  else if (nwrites_to_crash > 0)
-    nwrites_to_crash--;
-
 
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
 	ospfs_symlink_inode_t *new_symlink;
 	ospfs_direntry_t *new_entry;
+
+	if (nwrites_to_crash == 0) {
+	  return 0;
+	}
+	else if (nwrites_to_crash > 0)
+	  nwrites_to_crash--;
+
+
 	/* EXERCISE: Your code here. */
 		//if name too long
 	if( dentry->d_name.len > OSPFS_MAXSYMLINKLEN || strlen(symname)> OSPFS_MAXSYMLINKLEN)
