@@ -1243,7 +1243,7 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		  else if(nwrites_to_crash == 0){
 		    eprintk("Crashed, couldn't write\n");
 		    //nwrites_to_crash--;                                         
-		    return -EIO;
+		    return 1;
 		  }
 		  else
 		    nwrites_to_crash--;
