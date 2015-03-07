@@ -3,12 +3,19 @@
 #include <linux/ioctl.h>
 // OSPFS Constants and Structure Definitions
 
-/*Define the ioctl call used to crash ospfs*/
+ /*****************************************************************************
+ * DESIGN PROBLEM: CRASHING OSPFS
+ *
+ *   In order to crash the OSPFS file system, we designate and IOCTL
+ *   variable below, which will be called by ioctl in user space in 
+ *   order to set nwrites_to_crash.
+ *
+ *****************************************************************************/
 
 #define IOC_MAGIC 'k'
 #define IOCTL_NWRITES_TO_CRASH _IO(IOC_MAGIC, 0)
 
-/*****************************************************************************
+ /*****************************************************************************
  * BLOCKS
  *
  *   The OSPFS format divides disk data into a series of blocks,

@@ -36,7 +36,8 @@
 extern uint8_t ospfs_data[];
 extern uint32_t ospfs_length;
 
-//Crash variable.
+/*Crash variable. When initiated with the module, it is set to -1, which means
+  the program will run normally without crashing*/
 int nwrites_to_crash;
 
 // A pointer to the superblock; see ospfs.h for details on the struct.
@@ -526,6 +527,13 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 static int
 ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 {
+
+  /*For all functions containing nwrites_to_crash. When it is greater than 0, it
+    will decrement before continuing to execute the function normally. When
+    nwrites_to_crash is zero, the function will return without performing the 
+    write, link, etc. It returns success, as if the function executed properly.
+   */
+
   if (nwrites_to_crash == 0) {
     return 0;
   }
@@ -1742,6 +1750,9 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 	}
         return (void *) 0;
 }
+
+/*The ioctl function sets a special I/O command. In this case, we are setting nwrites_to_crash
+using an ioctl in the user space.*/
 
 int ioctl_func(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg) {
 

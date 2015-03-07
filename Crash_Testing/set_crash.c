@@ -3,16 +3,18 @@
 #include <stdint.h>
 #include "ospfs.h"
 
-main(int argc, char **argv){
-  int fd;
+
+/*Main must be called in order to crash the OSPFS File System.
+  The user space call of ioctl will set nwrites_to_crash.*/
+
+void main(int argc, char **argv){
   
-  // printf("%d",  atoi(argv[1]));
+int fd;
+  
   fd = open("./test/crash.txt", O_RDONLY | O_CREAT);
 
-  //set nwrites_to_crash
+  //set nwrites_to_crash to the first argument on the command line
   ioctl(fd, IOCTL_NWRITES_TO_CRASH, atoi(argv[1]));
-  // write(fd, "yas yas yas", 12);
-  //link("./test/world.txt", "./test/thelink");
  
   close(fd);
 }

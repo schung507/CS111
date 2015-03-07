@@ -1,0 +1,17 @@
+#!/bin/sh
+
+cd test | \
+./set_crash 4 | \
+echo 'hello' > world.txt | \
+mkdir CS111-design-problem | \
+echo 'yellow' > color.txt | \
+#Things should start crashing now
+ln world.txt hello.txt | \
+cp world.txt color.txt | \
+rmdir CS111-design-problem | \
+./set_crash -1 | \
+#Now if you try to access things...disaster!!
+cat hello.txt | \
+cd CS111-design-problem | \
+cd .. | \
+cat color.txt

@@ -1,17 +1,56 @@
 #!/bin/sh
 
-./set_crash 1
+#set_crash sets n_writes_to_crash
+./set_crash 4
+
 cd test
-echo 'hello' > world.txt 
+
+#For each of the following commands, nwrites_to_crash decrements by 1
+#But all commands are executed normally
+
+echo 'hello' >> world.txt
+ 
 echo 'yellow' > color.txt
-#Things should start crashing now
+
+ln world.txt copy_of_world.txt
+
+ln -s hello.txt symlink_to_hello
+
+#Anything following this line should silently FAIL i.e. none
+#of these commands execute properly, causing an incorrect state
+
 ln world.txt jelly.txt
+
+rm copy_of_world.txt
+
+mkdir design-problem
+
+echo 'red blue green' >> color.txt
+
+unlink symlink_to_hello
+
 cd ..
-#mkdir CS111-design-problem | \
+
+#Restore the OSPFS system so that we can use the file system normally
+
 ./set_crash -1
-#Now if you try to access things...disaster!!
-cd test
-cat jelly.txt
-#cd CS111-design-problem | \
-#cd .. | \
+
+cd test 
+
+#Now if you try to access things added or removed during the incorrect
+#state...disaster!!
+
+#jelly.txt does not exist
+ln jelly.txt peanut.txt
+
+#cd copy_of_world.txt still exists, even though it should have been removed
+cat copy_of_world.txt
+
+#This directory does not exist
+cd design-problem
+
+#Only contains 'yellow'
 cat color.txt
+
+#The symbolic link still exists
+cat symlink_to_hello
