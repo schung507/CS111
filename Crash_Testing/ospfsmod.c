@@ -36,6 +36,9 @@
 extern uint8_t ospfs_data[];
 extern uint32_t ospfs_length;
 
+//Crash variable.
+int nwrites_to_crash;
+
 // A pointer to the superblock; see ospfs.h for details on the struct.
 static ospfs_super_t * const ospfs_super =
 	(ospfs_super_t *) &ospfs_data[OSPFS_BLKSIZE];
@@ -523,6 +526,11 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 static int
 ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 {
+  if (nwrites_to_crash == 0)
+    return 0;
+  if (nwrites_to_crash > 0)
+    nwrites_to_crash--;
+
 	ospfs_inode_t *oi = ospfs_inode(dentry->d_inode->i_ino);
 	ospfs_inode_t *dir_oi = ospfs_inode(dentry->d_parent->d_inode->i_ino);
 	int entry_off;
@@ -1210,6 +1218,12 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
 {
+
+  if (nwrites_to_crash == 0)
+    return 0;
+  else if (nwrites_to_crash > 0)
+    nwrites_to_crash--;
+
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
@@ -1340,6 +1354,12 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    Use ERR_PTR if this fails; otherwise, clear out all the directory
 	//    entries and return one of them.
 
+  if (nwrites_to_crash == 0) {
+    return 0;
+  }
+  else if (nwrites_to_crash > 0) 
+    nwrites_to_crash--;
+
 	/* EXERCISE: Your code here. */
 	uint32_t f_pos;
 	int new_block;
@@ -1361,6 +1381,8 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	empty_entry = ospfs_inode_data(dir_oi, dir_oi->oi_size - OSPFS_DIRENTRY_SIZE);
 	empty_entry->od_ino = 0;
 
+
+	
 	return empty_entry; // Replace this line
 }
 
@@ -1396,6 +1418,14 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
 	/* EXERCISE: Your code here. */
+
+  if (nwrites_to_crash == 0) {
+    return 0;
+  }
+  else if (nwrites_to_crash > 0)
+    nwrites_to_crash--;
+
+
         ospfs_inode_t *dir_t = ospfs_inode(dir->i_ino);
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *temp_inode;
@@ -1421,7 +1451,8 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	memcpy(new_entry->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
 	//add nullbyte?
 	new_entry->od_name[dst_dentry->d_name.len]=0;
-       
+   
+    
 	return 0;
 }
 
@@ -1457,6 +1488,13 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 static int
 ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidata *nd)
 {
+  if (nwrites_to_crash == 0) {
+    return 0;
+  }
+  else if (nwrites_to_crash > 0)
+    nwrites_to_crash--;
+
+
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
 	/* EXERCISE: Your code here. */
@@ -1525,6 +1563,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 		if (!i)
 			return -ENOMEM;
 		d_instantiate(dentry, i);
+ 
 		return 0;
 	}
 }
@@ -1555,6 +1594,13 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 {
+  if (nwrites_to_crash == 0) {
+    return 0;
+  }
+  else if (nwrites_to_crash > 0)
+    nwrites_to_crash--;
+
+
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 2;
 	ospfs_symlink_inode_t *new_symlink;
@@ -1626,6 +1672,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 		if (!i)
 			return -ENOMEM;
 		d_instantiate(dentry, i);
+		
 		return 0;
 	}
 }
@@ -1681,6 +1728,20 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
         return (void *) 0;
 }
 
+int ioctl_func(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg) {
+
+  switch(cmd) {
+    
+  case IOCTL_NWRITES_TO_CRASH:
+    nwrites_to_crash = (int) arg;
+    break;
+    
+  }
+
+  return 0;
+
+}
+
 
 // Define the file system operations structures mentioned above.
 
@@ -1698,7 +1759,8 @@ static struct inode_operations ospfs_reg_inode_ops = {
 static struct file_operations ospfs_reg_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= ospfs_read,
-	.write		= ospfs_write
+	.write		= ospfs_write,
+	.ioctl          = ioctl_func
 };
 
 static struct inode_operations ospfs_dir_inode_ops = {
@@ -1732,6 +1794,7 @@ static struct super_operations ospfs_superblock_ops = {
 static int __init init_ospfs_fs(void)
 {
 	eprintk("Loading ospfs module...\n");
+	nwrites_to_crash = -1;
 	return register_filesystem(&ospfs_fs_type);
 }
 
