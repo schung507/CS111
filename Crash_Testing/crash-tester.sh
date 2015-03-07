@@ -23,8 +23,6 @@ ln world.txt jelly.txt
 
 rm copy_of_world.txt
 
-mkdir design-problem
-
 echo 'red blue green' >> color.txt
 
 unlink symlink_to_hello
@@ -46,11 +44,6 @@ ln jelly.txt peanut.txt
 #cd copy_of_world.txt still exists, even though it should have been removed
 cat copy_of_world.txt
 
-#This directory does not exist
-cd design-problem
-
 #Only contains 'yellow'
 cat color.txt
 
-#The symbolic link still exists
-cat symlink_to_hello

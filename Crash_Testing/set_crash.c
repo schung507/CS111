@@ -6,8 +6,7 @@
 
 /*Main must be called in order to crash the OSPFS File System.
   The user space call of ioctl will set nwrites_to_crash.*/
-
-void main(int argc, char **argv){
+int main(int argc, char **argv){
   
 int fd;
   
