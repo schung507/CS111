@@ -581,17 +581,6 @@ allocate_block(void)
   uint32_t blockno = 0;
   for (blockno = 0; blockno != ospfs_super->os_nblocks; blockno++) {
       if ((bitvector_test(bitmap, blockno)) == 1) {
-
-	if(nwrites_to_crash != -1){
-	  if(nwrites_to_crash < -1)
-	    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-	  else if(nwrites_to_crash == 0)
-	    return 0;
-	  else
-	    nwrites_to_crash--;
-	}
-
-
 	bitvector_clear(bitmap, blockno);
 	return blockno;
       }
@@ -629,8 +618,11 @@ free_block(uint32_t blockno)
 	  if(nwrites_to_crash != -1){
 	    if(nwrites_to_crash < -1)
 	      eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-	    else if(nwrites_to_crash == 0)
+	    else if(nwrites_to_crash == 0){
+	      eprintk("Crashed, couldn't free block");
+	      //nwrites_to_crash--;
 	      return;
+	    }
 	    else
 	      nwrites_to_crash--;
 	  }
@@ -1069,9 +1061,12 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	if(nwrites_to_crash != -1){
           if(nwrites_to_crash < -1)
             eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-          else if(nwrites_to_crash == 0)
-            return 0;
-          else
+          else if(nwrites_to_crash == 0){
+	    eprintk("Crashed, couldn't change size to %d", new_size);
+	    //nwrites_to_crash--;
+	    return 0;
+	  }
+	  else
             nwrites_to_crash--;
 	}
 
@@ -1292,8 +1287,11 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if(nwrites_to_crash != -1){
 		  if(nwrites_to_crash < -1)
 		    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-		  else if(nwrites_to_crash == 0)
+		  else if(nwrites_to_crash == 0){
+		    eprintk("Crashed, couldn't write\n");
+		    //nwrites_to_crash--;                                         
 		    return 0;
+		  }
 		  else
 		    nwrites_to_crash--;
 		}
@@ -1394,15 +1392,6 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	    return find_empty;
 	}
 
-	if(nwrites_to_crash != -1){
-          if(nwrites_to_crash < -1)
-            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-          else if(nwrites_to_crash == 0)
-            return 0;
-          else
-            nwrites_to_crash--;
-	}
-
 	//else make new block
 	new_block = change_size(dir_oi, dir_oi->oi_size + OSPFS_DIRENTRY_SIZE);
 	//if fail to make new block
@@ -1467,14 +1456,16 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	//return -ENOSPC;
 
 	if(nwrites_to_crash != -1){
-          if(nwrites_to_crash < -1)
-            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-          else if(nwrites_to_crash == 0)
-            return 0;
-          else
-            nwrites_to_crash--;
+	  if(nwrites_to_crash < -1)
+	    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+	  else if(nwrites_to_crash == 0){
+	    eprintk("Crashed, couldn't link\n");
+	    //nwrites_to_crash--;                                                
+	    return 0;
+	  }
+	  else
+	    nwrites_to_crash--;
 	}
-
 
 	temp_inode->oi_nlink++;
 
@@ -1562,14 +1553,18 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	}
 
 	if(nwrites_to_crash != -1){
-          if(nwrites_to_crash < -1)
-            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-          else if(nwrites_to_crash == 0)
-            return 0;
-          else
-            nwrites_to_crash--;
+	  if(nwrites_to_crash < -1)
+	    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+	  else if(nwrites_to_crash == 0){
+	    eprintk("Crashed, couldn't create new file");
+	    //nwrites_to_crash--;                                                
+	    return 0;
+	  }
+	  else
+	    nwrites_to_crash--;
 	}
 
+	
 	//initialize everything
 	new_node = ospfs_inode(entry_ino);
 	new_node->oi_size = 0;
@@ -1669,12 +1664,15 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	  return -ENOSPC;
 
 	if(nwrites_to_crash != -1){
-          if(nwrites_to_crash < -1)
-            eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-          else if(nwrites_to_crash == 0)
-            return 0;
-          else
-            nwrites_to_crash--;
+	  if(nwrites_to_crash < -1)
+	    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+	  else if(nwrites_to_crash == 0){
+	    eprintk("Crashed, couldn't create symlink");
+	    //nwrites_to_crash--;                                                
+	    return 0;
+	  }
+	  else
+	    nwrites_to_crash--;
 	}
 
 	//initialize everything
