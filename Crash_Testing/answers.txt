@@ -1,14 +1,4 @@
-# Fill in your name, student ID, and email address in this file.
-# If you are working in a team, fill out the information for both team 
-# members.
-
-# SUBMIT THE LAB ONLY ONCE (from only one partner). This file will be
-# automatically parsed in order to give both team members credit for the
-# lab.
-
-# If you did one or more extra credit problems, indicate which one in the
-# appropriate section below (remove the # sign first). If you have any other
-# information you'd like us to know, please add it at the end of the file.
+#DESIGN PROBLEM - Lab 3, OSPFS File System Crasher
 
 #Partner 1
 Name:Stella Chung	 
@@ -20,7 +10,15 @@ Name: Lynn Hao Tran
 Student ID: 304325447 
 Email: lynn.h.tran@gmail.com
 
-# Extra credit problems
-#Extra credit problem: none
-
 # Add any other information you'd like us to know below this line.
+For our design problem, we implemented an ioctl that introduced the 
+variable nwrites_to_crash. nwrites_to_crash determines when the system
+crashes: if it is a positive integer or -1, the file system acts normally, 
+and if it is 0, the file system behaves as if it is executing all commands,
+but it is actually silently failing. We declare the ioctl in ospfs.h and
+implement it in ospfsmod.c (nwrites_to_crash is checked and decremented in
+ospfs_write, ospfs_create, ospfs_link, symlink, and unlink. set_crash is
+the user space where the ioctl sets the value of nwrites_to_crash. Our
+tester, crash-tester.sh, shows the incorrect state of the file system after
+it crashes. (Some issues with the bash script, but running the code on QEMU,
+all the crashes with the various functions work as intended.)
