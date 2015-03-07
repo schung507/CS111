@@ -614,7 +614,7 @@ free_block(uint32_t blockno)
         if (blockno != 0 && 
 	    blockno != 1 && 
 	    (bitvector_test(bitmap, blockno) == 0)){ 
-	  
+	  /*  
 	  if(nwrites_to_crash != -1){
 	    if(nwrites_to_crash < -1)
 	      eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
@@ -625,7 +625,7 @@ free_block(uint32_t blockno)
 	    }
 	    else
 	      nwrites_to_crash--;
-	  }
+	      }*/
 
 
 	  bitvector_set(bitmap, blockno);
@@ -1057,19 +1057,19 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
 	int r = 0;
-	
+	/*
 	if(nwrites_to_crash != -1){
           if(nwrites_to_crash < -1)
             eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
           else if(nwrites_to_crash == 0){
 	    eprintk("Crashed, couldn't change size to %d", new_size);
 	    //nwrites_to_crash--;
-	    return 0;
+	    return -1;
 	  }
 	  else
             nwrites_to_crash--;
-	}
-
+	    }
+	*/
 	if (old_size == new_size)
 	  return 0;
 
@@ -1237,6 +1237,19 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
 {
+		if(nwrites_to_crash != -1){
+		  if(nwrites_to_crash < -1)
+		    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
+		  else if(nwrites_to_crash == 0){
+		    eprintk("Crashed, couldn't write\n");
+		    //nwrites_to_crash--;                                         
+		    return -EIO;
+		  }
+		  else
+		    nwrites_to_crash--;
+		}
+
+
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
@@ -1284,17 +1297,6 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		if (remaining < n)
 		  n = remaining;
 
-		if(nwrites_to_crash != -1){
-		  if(nwrites_to_crash < -1)
-		    eprintk("invalid nwrites_to_crash: %d\n", nwrites_to_crash);
-		  else if(nwrites_to_crash == 0){
-		    eprintk("Crashed, couldn't write\n");
-		    //nwrites_to_crash--;                                         
-		    return 0;
-		  }
-		  else
-		    nwrites_to_crash--;
-		}
 
 
 		writing = copy_from_user(data + block_offset, buffer, n);
