@@ -1505,11 +1505,11 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	  if (nwrites_to_crash == 0) {
 	    eprintk("Crashed creating files!\n");
-	  return 0;
-	}
+	    return 0;
+	  }
 	  else if (nwrites_to_crash > 0) {
 	    eprintk("Decrement in creat!\n");
-	nwrites_to_crash--;
+	    nwrites_to_crash--;
 	  }
 
 	//if name too long
