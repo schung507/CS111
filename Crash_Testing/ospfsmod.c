@@ -1427,11 +1427,13 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 	ospfs_inode_t *temp_inode;
 
 	if (nwrites_to_crash == 0) {
+	  eprintk("Our program is crashed!");
 	  return 0;
 	}
-	else if (nwrites_to_crash > 0)
+	if (nwrites_to_crash > 0) {
+	  eprintk("Decrementing nwrites_to_crash! %d\n", nwrites_to_crash);
 	  nwrites_to_crash--;
-
+	}
 
 
 	if( find_direntry(dir_t, dst_dentry->d_name.name, dst_dentry->d_name.len)!= NULL)
@@ -1741,6 +1743,7 @@ int ioctl_func(struct inode *inode, struct file *filp, unsigned int cmd, unsigne
     
   case IOCTL_NWRITES_TO_CRASH:
     nwrites_to_crash = (int) arg;
+    eprintk("Ioctl changed nwrites to %d\n", nwrites_to_crash);
     break;
     
   }
@@ -1802,6 +1805,7 @@ static int __init init_ospfs_fs(void)
 {
 	eprintk("Loading ospfs module...\n");
 	nwrites_to_crash = -1;
+	eprintk("Init value: %d\n", nwrites_to_crash);
 	return register_filesystem(&ospfs_fs_type);
 }
 
