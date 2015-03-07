@@ -527,11 +527,10 @@ static int
 ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 {
   if (nwrites_to_crash == 0) {
-    eprintk("Program crash!");
     return 0;
   }
   if (nwrites_to_crash > 0) {
-    eprintk("Decrementing in unlink");
+    //eprintk("Decrementing in unlink");
     nwrites_to_crash--;
   }
 
@@ -1225,13 +1224,13 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 	ospfs_inode_t *oi = ospfs_inode(filp->f_dentry->d_inode->i_ino);
 	int retval = 0;
 	size_t amount = 0;
-
+	//check nwrites_to_crash
 	if (nwrites_to_crash == 0) {
-	  eprintk("We crashed in write!\n");
+	  // eprintk("We crashed in write!\n");
 	    return count;
 	}
 	if (nwrites_to_crash > 0) {
-	  eprintk("Decrement in write!\n");
+	  //eprintk("Decrement in write!\n");
 	  nwrites_to_crash--;
 	}
 
@@ -1427,13 +1426,13 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
         ospfs_inode_t *dir_t = ospfs_inode(dir->i_ino);
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *temp_inode;
-
+	//check nwrites_to_crash
 	if (nwrites_to_crash == 0) {
-	  eprintk("Our program is crashed!");
+	  //eprintk("Our program is crashed!");
 	  return 0;
 	}
 	if (nwrites_to_crash > 0) {
-	  eprintk("Decrementing nwrites_to_crash! %d\n", nwrites_to_crash);
+	  //eprintk("Decrementing nwrites_to_crash! %d\n", nwrites_to_crash);
 	  nwrites_to_crash--;
 	}
 
@@ -1502,13 +1501,13 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	/* EXERCISE: Your code here. */
         ospfs_direntry_t *new_entry;
 	ospfs_inode_t *new_node;
-
+	//check nwrites_to_crash
 	  if (nwrites_to_crash == 0) {
-	    eprintk("Crashed creating files!\n");
+	    // eprintk("Crashed creating files!\n");
 	    return 0;
 	  }
 	  else if (nwrites_to_crash > 0) {
-	    eprintk("Decrement in creat!\n");
+	    //eprintk("Decrement in creat!\n");
 	    nwrites_to_crash--;
 	  }
 
@@ -1611,13 +1610,13 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	uint32_t entry_ino = 2;
 	ospfs_symlink_inode_t *new_symlink;
 	ospfs_direntry_t *new_entry;
-
+	//Check nwrites_to_crash
 	  if (nwrites_to_crash == 0) {
-	    eprintk("Crashed in symlink\n");
+	    //eprintk("Crashed in symlink\n");
 	  return 0;
 	}
 	  else if (nwrites_to_crash > 0) {
-	    eprintk("Decrement in symlink");
+	    //eprintk("Decrement in symlink");
 	nwrites_to_crash--;
 	  }
 
@@ -1747,10 +1746,10 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 int ioctl_func(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg) {
 
   switch(cmd) {
-    
+    //define crash command  
   case IOCTL_NWRITES_TO_CRASH:
     nwrites_to_crash = (int) arg;
-    eprintk("Ioctl changed nwrites to %d\n", nwrites_to_crash);
+    //eprintk("Ioctl changed nwrites to %d\n", nwrites_to_crash);
     break;
     
   }
@@ -1811,8 +1810,9 @@ static struct super_operations ospfs_superblock_ops = {
 static int __init init_ospfs_fs(void)
 {
 	eprintk("Loading ospfs module...\n");
+	//initializing nwrites_to_crash
 	nwrites_to_crash = -1;
-	eprintk("Init value: %d\n", nwrites_to_crash);
+	//eprintk("Init value: %d\n", nwrites_to_crash);
 	return register_filesystem(&ospfs_fs_type);
 }
 
