@@ -517,9 +517,14 @@ static void task_download(task_t *t, task_t *tracker_task)
 	int bytes_downloaded;
 	int total = 0;
 	int last_head = 0;
-	int sample_sizes[10];
+	int sample_sizes[SAMPLES];
 	int current_file_size = 0;
 	int size = 0;
+
+	int set;
+	for (set = 0; set != SAMPLES; set++) {
+	  sample_sizes[set] = THRESHOLD*2;
+	}
   
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
