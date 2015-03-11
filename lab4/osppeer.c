@@ -35,8 +35,11 @@ static int listen_port;
  * a bounded buffer that simplifies reading from and writing to peers.
  */
 
-#define TASKBUFSIZ	4096	// Size of task_t::buf
+#define TASKBUFSIZ	16384	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
+#define SAMPLES         10
+#define THRESHOLD       32
+#define LARGEST_FILE_SIZE    1 << 30
 
 typedef enum tasktype {		// Which type of connection is this?
 	TASK_TRACKER,		// => Tracker connection
@@ -92,8 +95,10 @@ static task_t *task_new(tasktype_t type)
 	t->total_written = 0;
 	t->peer_list = NULL;
 
-	strcpy(t->filename, "");
-	strcpy(t->disk_filename, "");
+	//Safe operations, just making filenames empty
+	//All of the bytes of the name are set to NULL
+	strncpy(t->filename, "", strlen(t->filename));
+	strncpy(t->disk_filename, "", strlen(t->disk_filename));
 
 	return t;
 }
@@ -113,8 +118,10 @@ static void task_pop_peer(task_t *t)
 		t->peer_fd = t->disk_fd = -1;
 		t->head = t->tail = 0;
 		t->total_written = 0;
-		t->disk_filename[0] = '\0';
-
+		//t->disk_filename[0] = '\0';
+		//Zero out the disk filename
+		strncpy(t->disk_filename, "", strlen(t->disk_filename));
+		
 		// Move to the next peer
 		if (t->peer_list) {
 			peer_t *n = t->peer_list->next;
@@ -476,8 +483,11 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
-	strcpy(t->filename, filename);
-
+	//Make sure peer does not attempt to give filename larger than size
+	//Make it extra safe by making sure the last byte is NULL
+	strncpy(t->filename, filename, FILENAMESIZ);
+	t->filename[FILENAMESIZ - 1] = '\0';
+	
 	// add peers
 	s1 = tracker_task->buf;
 	while ((s2 = memchr(s1, '\n', (tracker_task->buf + messagepos) - s1))) {
@@ -502,6 +512,15 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 //	until a download is successful.
 static void task_download(task_t *t, task_t *tracker_task)
 {
+        struct timespec initial_time;
+	struct timespec current_time;
+	int bytes_downloaded;
+	int total = 0;
+	int last_head = 0;
+	int sample_sizes[10];
+	int current_file_size = 0;
+	int size = 0;
+  
 	int i, ret = -1;
 	assert((!t || t->type == TASK_DOWNLOAD)
 	       && tracker_task->type == TASK_TRACKER);
@@ -532,8 +551,10 @@ static void task_download(task_t *t, task_t *tracker_task)
 	// "foo.txt~1~".  However, if there are 50 local files, don't download
 	// at all.
 	for (i = 0; i < 50; i++) {
-		if (i == 0)
-			strcpy(t->disk_filename, t->filename);
+	  if (i == 0) { //Safe copy, only allow up to max file name size
+		  strncpy(t->disk_filename, t->filename, FILENAMESIZ);
+		  t->disk_filename[FILENAMESIZ - 1] = '\0';
+	  }
 		else
 			sprintf(t->disk_filename, "%s~%d~", t->filename, i);
 		t->disk_fd = open(t->disk_filename,
@@ -564,6 +585,39 @@ static void task_download(task_t *t, task_t *tracker_task)
 			/* End of file */
 			break;
 
+		//Find the number of bytes downloaded in this iteration
+		bytes_downloaded = t->head - last_head;
+		current_file_size += bytes_downloaded;
+
+		//Is this file too big?
+		if (current_file_size > LARGEST_FILE_SIZE) {
+		  error("This file is too large to download.");
+		  goto try_again;
+		}
+
+		//Number of bytes downloaded from last iteration
+		last_head = t->head;
+
+		//Keep an updated list of sample number of bytes
+		//downloaded
+		for (i = 0; i < SAMPLES - 1; i++) 
+		  sample_sizes[i] = sample_sizes[i + 1];
+
+		//Add the most recent iteration
+		sample_sizes[SAMPLES - 1] = bytes_downloaded;
+
+		for (i = 0; i != SAMPLES; i++)
+		  total += sample_sizes[i];
+
+		//IS THIS A SLOW RUN OR NO - take the average of
+		//the last ten samples and determine whether or not
+		//this peer is slow
+		if (THRESHOLD > (total/SAMPLES)) {
+		  error("This peer is too slow!");
+		  goto try_again;
+		}
+
+		
 		ret = write_from_taskbuf(t->disk_fd, t);
 		if (ret == TBUF_ERROR) {
 			error("* Disk write error");
@@ -630,6 +684,11 @@ static task_t *task_listen(task_t *listen_task)
 //	the requested file.
 static void task_upload(task_t *t)
 {
+  	char file_path_name[PATH_MAX];
+	char current_path_name[PATH_MAX];
+	char* file_path;
+	char* current_path;
+  
 	assert(t->type == TASK_UPLOAD);
 	// First, read the request from the peer.
 	while (1) {
@@ -648,6 +707,29 @@ static void task_upload(task_t *t)
 		goto exit;
 	}
 	t->head = t->tail = 0;
+
+	file_path = realpath(t->filename, file_path_name);
+	current_path = getcwd(current_path_name, PATH_MAX);
+
+	//Check that both paths are actually valid
+	if (file_path == NULL || current_path == NULL) {
+	  errno = ENOENT;
+	  error("Invalid file or directory\n");
+	  goto exit;
+	}
+
+	//Compare to see if in current directory
+	if (strncmp(current_path, file_path, strlen(current_path))) {
+	    error("File does not reside in current directory\n");
+	    goto exit;
+	  }
+
+	//Check that the filename request is within bounds
+	if (strlen(t->filename) > FILENAMESIZ) {
+	  errno = ENAMETOOLONG;
+	  error("The requested file name is too large.");
+	  goto exit;
+	}
 
 	t->disk_fd = open(t->filename, O_RDONLY);
 	if (t->disk_fd == -1) {
