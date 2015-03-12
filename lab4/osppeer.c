@@ -97,8 +97,8 @@ static task_t *task_new(tasktype_t type)
 
 	//Safe operations, just making filenames empty
 	//All of the bytes of the name are set to NULL
-	strncpy(t->filename, "", strlen(t->filename));
-	strncpy(t->disk_filename, "", strlen(t->disk_filename));
+	strncpy(t->filename, "", FILENAMESIZ);
+	strncpy(t->disk_filename, "", FILENAMESIZ);
 
 	return t;
 }
@@ -120,7 +120,7 @@ static void task_pop_peer(task_t *t)
 		t->total_written = 0;
 		//t->disk_filename[0] = '\0';
 		//Zero out the disk filename
-		strncpy(t->disk_filename, "", strlen(t->disk_filename));
+		strncpy(t->disk_filename, "", FILENAMESIZ);
 		
 		// Move to the next peer
 		if (t->peer_list) {
@@ -139,9 +139,9 @@ static void task_free(task_t *t)
 		do {
 			task_pop_peer(t);
 		} while (t->peer_list);
-		printf("Trying to free a peer!");
+		//printf("Trying to free a peer!");
 		free(t);
-		printf("Done freeing a peer!");
+		//printf("Done freeing a peer!");
 	}
 }
 
@@ -780,7 +780,7 @@ static void task_upload(task_t *t)
 	  }
 
 	//Check that the filename request is within bounds
-	if (strlen(t->filename) > FILENAMESIZ) {
+	if (strlen(t->filename) > (FILENAMESIZ - 1)) {
 	  errno = ENAMETOOLONG;
 	  error("The requested file name is too large.");
 	  goto exit;
