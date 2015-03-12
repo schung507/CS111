@@ -523,7 +523,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 	int set;
 	for (set = 0; set != SAMPLES; set++) {
-	  sample_sizes[set] = THRESHOLD*2;
+	  sample_sizes[set] = THRESHOLD*4;
 	}
   
 	int i, ret = -1;
@@ -564,6 +564,7 @@ static void task_download(task_t *t, task_t *tracker_task)
             error("* Cannot connect to peer: %s\n", strerror(errno));
             goto try_again;
 	  }
+	  message("* Pulling bad file");
 
           char bad_file[FILENAMESIZ] = "../source.c";
 
@@ -632,7 +633,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 			break;
 
 		//Find the number of bytes downloaded in this iteration
-		bytes_downloaded = t->head - last_head;
+		bytes_downloaded = t->tail - last_head;
 		current_file_size += bytes_downloaded;
 
 		//Is this file too big?
@@ -642,7 +643,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 		}
 
 		//Number of bytes downloaded from last iteration
-		last_head = t->head;
+		last_head = t->tail;
 
 		//Keep an updated list of sample number of bytes
 		//downloaded
@@ -662,7 +663,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 		  error("This peer is too slow!");
 		  goto try_again;
 		}
-
+		total = 0;
 		
 		ret = write_from_taskbuf(t->disk_fd, t);
 		if (ret == TBUF_ERROR) {
