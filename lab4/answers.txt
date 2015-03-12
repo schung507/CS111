@@ -19,8 +19,8 @@ Email: lynn.h.tran@gmail.com
 
 # Partner 2 (if you're working in a team)
 Name: Stella Chung
-Student ID: 
-Email: 
+Student ID: 004-277-565 
+Email: schung507@gmail.com
 
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
@@ -96,7 +96,7 @@ we return with error saying that the file is too large.
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
 
-1. Buffer overflow - We requested a file with a filename of length FILENAMESIZ*10. Overflowing 
+1. Buffer overflow - We requested a file with a filename of length FILENAMESIZ*5. Overflowing 
 the filename can corrupt memory and cause segfaults. This attack is similar to the next one 
 in that the client requests a file that the server is not serving.
 
