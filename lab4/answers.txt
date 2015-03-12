@@ -31,8 +31,57 @@ downloading and uploading whatever files are requested and then exit.
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
 
+
+
 # EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
 #    each)
+
+- Increase the size of the task buffer by a factor of four
+The size of the task buffer given in the skeleton was not able to handle
+the traffic from make-popular. There were too many peers who would be
+able to serve the file but not enough space to hold the aliases of the
+peers in the buffer. To combat this, we increase the capacity of the buffer
+so that it is not saturated by the influx of peers and we can thus download
+files in make-popular.
+
+- Buffer Overruns
+We fix buffer overruns in the places specified in 2A using the safe version
+of strcpy(), strncpy(), where you can specify the number of bytes that will
+be copied into the string. Another defensive measure added on is making the
+last position in the string a null byte so that we will always have a null-
+terminated string.
+
+- Only serving files in the current directory and subdirectories underneath
+We do not want peers to try to be able to access other directories; access
+is restricted to the current directory and subdirectories in task_upload. We
+see what the file path is being requested and compare the beginning of the
+file path name to current directory; if they match the file is contained in
+that directory (even if it's in another subdirectory. We use strncompare() to
+look for only the length of the current directory string.
+
+- Upload requests with within bounds file names
+Previously, a peer could request a file that was larger than FILENAMESIZ, but
+we check that the requested file name is within bounds of the buffer, otherwise
+we do not initialize the upload.
+
+- Zero out buffers for file names and disk file names
+When we create a new task or pop a peer, the file name and disk file name's
+first byte is set to NULL so that it appears to be empty, but it does not get
+rid of any other bytes in the string, leaving potential garbage that can be accessed.
+To prevent this situation, we use strncpy to copy FILENAMESIZ number of NULL bytes
+into the buffer.
+
+- Time out slow peers
+In order to prevent slow peers, we set a threshold in task_download that checks as we
+read the file into the task buffer. We collect SAMPLES (10) amount of samples to and
+average them to find the average speed of download. If it does not meet the threshold,
+then the peer is deemed too slow.
+
+-Time out overly large files
+Using the same mechanism in task_download, we set a variable that sets the maximum size
+of a file, which we choose as 1MB. After each read from the task buffer, a running amount
+of bytes downloaded is incremented; if the number of bytes ever exceeds the maximum size,
+we return with error saying that the file is too large.
 
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
