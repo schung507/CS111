@@ -115,3 +115,4 @@ the client less available.
 #Extra credit problem: none
 
 # Add any other information you'd like us to know below this line.
+Evil_mode 1 (buffer overflow) is implemented but causes glibc errors. Other 2 attacks work.
