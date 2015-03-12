@@ -86,6 +86,21 @@ we return with error saying that the file is too large.
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
 
+1. Buffer overflow - We requested a file with a filename of length FILENAMESIZ*10. Overflowing 
+the filename can corrupt memory and cause segfaults. This attack is similar to the next one 
+in that the client requests a file that the server is not serving.
+
+2. Request bad file - We requested a file not in the directory ( "../source.c"). 
+When you get a request you assume your client wants to download a file you're serving but since 
+the protocol doesn't require that, they can request any file they want. This is an attack by 
+using the software in way not originally intended. 
+
+3. D0S attack - For evil_mode 3, we repeatedly requested t->filename in a while loop. When 
+you're downloading, you're assuming the other peer is actively uploading something so you're 
+dedicating some resources to it. However, they can say they're uploading and do nothing. 
+Here, we are repeatedly requesting without uploading which is using up resources and making 
+the client less available.
+
 # Extra credit problems
 #Extra credit problem: none
 
