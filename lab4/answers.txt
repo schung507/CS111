@@ -31,7 +31,17 @@ downloading and uploading whatever files are requested and then exit.
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
 
+- In start_download, we change an unsafe strcpy() to strncpy(). Previously,
+a peer could give us a bad file name that overran the size of the file
+name buffer, therby making it possible to corrupt nearby data. With strncpy(),
+we prevent this because strncpy() allows you to set the size to be copied. In
+our case, we copy only up to FILENAMESIZ.
 
+- Similarly, we change an unsafe strcpy() to strncpy() in task_download
+in order to check the file names being given by another peer. We only check
+peers because we assume that the tracker is always safe, but peers can
+potentially attempt to exploit an unprotected buffer. Again, we only allow
+FILENAMESIZ bytes to be copied.
 
 # EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
 #    each)
